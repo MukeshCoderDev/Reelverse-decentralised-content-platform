@@ -57,3 +57,17 @@ export async function fetchThreads() {
     // try { const r = await fetch("/api/inbox/threads"); if (r.ok) return await r.json(); } catch {}
     return mockThreads;
 }
+
+export async function fetchLikedVideos() {
+    await delay(400);
+    // try { const r = await fetch("/api/library/liked"); if (r.ok) return await r.json(); } catch {}
+    
+    // Generate mock liked videos with additional metadata
+    return mockContent.slice(0, 12).map((content, index) => ({
+        ...content,
+        likedAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000), // Random date within last 30 days
+        tags: ['music', 'gaming', 'education', 'entertainment', 'tech', 'sports'].slice(0, Math.floor(Math.random() * 3) + 1),
+        personalNotes: Math.random() > 0.7 ? 'Great video, need to watch again!' : undefined,
+        playlistIds: Math.random() > 0.5 ? ['1'] : []
+    }));
+}

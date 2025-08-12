@@ -1,0 +1,396 @@
+/* Mobile Components Styles */
+
+/* Pull to Refresh */
+.pull-to-refresh {
+  position: relative;
+  overflow: hidden;
+}
+
+.pull-to-refresh.disabled {
+  pointer-events: none;
+}
+
+.refresh-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(180deg, rgba(26, 26, 26, 0.9) 0%, rgba(26, 26, 26, 0) 100%);
+  z-index: 10;
+  transform: translateY(-100%);
+}
+
+.refresh-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+}
+
+.refresh-spinner {
+  width: 24px;
+  height: 24px;
+  position: relative;
+}
+
+.spinner-ring {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top: 2px solid #0066cc;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.refresh-arrow {
+  font-size: 1.5rem;
+  color: #666;
+  transition: color 0.2s, transform 0.2s;
+}
+
+.refresh-arrow.can-refresh {
+  color: #0066cc;
+}
+
+.refresh-text {
+  font-size: 0.875rem;
+  color: #999;
+  text-align: center;
+}
+
+.refresh-content-wrapper {
+  position: relative;
+  z-index: 1;
+}
+
+/* Swipeable Card */
+.swipeable-card-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.swipeable-card {
+  position: relative;
+  z-index: 2;
+  background: #1a1a1a;
+  border-radius: 8px;
+  transition: box-shadow 0.2s;
+}
+
+.swipeable-card.revealed {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.swipeable-card.disabled {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.swipe-actions {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  z-index: 1;
+}
+
+.swipe-actions.left-actions {
+  left: 0;
+  padding-left: 1rem;
+}
+
+.swipe-actions.right-actions {
+  right: 0;
+  padding-right: 1rem;
+  flex-direction: row-reverse;
+}
+
+.swipe-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-width: 80px;
+  height: 80px;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin: 0 0.25rem;
+}
+
+.swipe-action:hover {
+  transform: scale(1.05);
+}
+
+.action-icon {
+  font-size: 1.5rem;
+}
+
+.action-label {
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* Pinch Zoom */
+.pinch-zoom-container {
+  position: relative;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.pinch-zoom-container.disabled {
+  pointer-events: none;
+}
+
+.pinch-zoom-content {
+  width: 100%;
+  height: 100%;
+  transform-origin: center center;
+}
+
+.pinch-zoom-content.pinching {
+  transition: none !important;
+}
+
+.zoom-controls {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 20px;
+  padding: 0.5rem;
+  backdrop-filter: blur(10px);
+  z-index: 10;
+}
+
+.zoom-control {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.zoom-control:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+.zoom-control:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.zoom-control.zoom-reset {
+  width: auto;
+  padding: 0 0.75rem;
+  border-radius: 16px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.zoom-level {
+  font-size: 0.75rem;
+  color: white;
+  font-weight: 500;
+  min-width: 40px;
+  text-align: center;
+}
+
+/* Touch Optimized */
+.touch-optimized {
+  position: relative;
+  min-height: 44px; /* iOS minimum touch target */
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.touch-optimized:not(.disabled):active,
+.touch-optimized.pressed {
+  transform: scale(0.98);
+}
+
+.touch-optimized.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Ripple Animation */
+@keyframes ripple-animation {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 1;
+  }
+  100% {
+    width: 200px;
+    height: 200px;
+    opacity: 0;
+  }
+}
+
+.touch-ripple {
+  animation: ripple-animation 0.6s ease-out;
+}
+
+/* Context Menu */
+.context-menu {
+  animation: context-menu-appear 0.2s ease-out;
+}
+
+@keyframes context-menu-appear {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -100%) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -100%) scale(1);
+  }
+}
+
+.context-menu-item:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.context-menu-item.destructive:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+}
+
+/* Mobile-specific optimizations */
+@media (max-width: 768px) {
+  .swipe-action {
+    min-width: 60px;
+    height: 60px;
+    font-size: 0.625rem;
+  }
+  
+  .action-icon {
+    font-size: 1.25rem;
+  }
+  
+  .zoom-controls {
+    bottom: 0.5rem;
+    right: 0.5rem;
+  }
+  
+  .zoom-control {
+    width: 28px;
+    height: 28px;
+    font-size: 0.875rem;
+  }
+  
+  .context-menu {
+    min-width: 180px;
+  }
+  
+  .context-menu-item {
+    padding: 1rem 0.75rem !important;
+  }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .touch-optimized {
+    min-height: 48px;
+    min-width: 48px;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .touch-optimized,
+  .swipeable-card,
+  .refresh-arrow,
+  .zoom-control {
+    transition: none !important;
+  }
+  
+  .touch-ripple {
+    animation: none !important;
+  }
+  
+  .spinner-ring {
+    animation: none !important;
+  }
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .refresh-indicator {
+    background: linear-gradient(180deg, rgba(15, 15, 15, 0.9) 0%, rgba(15, 15, 15, 0) 100%);
+  }
+  
+  .swipeable-card {
+    background: #0f0f0f;
+  }
+  
+  .zoom-controls {
+    background: rgba(15, 15, 15, 0.9);
+  }
+  
+  .context-menu {
+    background: rgba(15, 15, 15, 0.95) !important;
+  }
+}
+
+/* Focus styles for accessibility */
+.touch-optimized:focus-visible {
+  outline: 2px solid #0066cc;
+  outline-offset: 2px;
+}
+
+.swipe-action:focus-visible,
+.zoom-control:focus-visible,
+.context-menu-item:focus-visible {
+  outline: 2px solid #0066cc;
+  outline-offset: 1px;
+}
+
+/* Loading states */
+.touch-optimized.loading {
+  pointer-events: none;
+}
+
+.touch-optimized.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid #0066cc;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}

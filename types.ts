@@ -9,7 +9,8 @@ export type IconName =
   | 'share' | 'trending-up' | 'eye' | 'play' | 'chevron-right' | 'chevron-left'
   | 'gamepad-2' | 'music' | 'cpu' | 'graduation-cap' | 'tv' | 'trophy' | 'newspaper'
   | 'trending-down' | 'list' | 'grid' | 'check' | 'trash' | 'more-horizontal' | 'x'
-  | 'download';
+  | 'download' | 'pause' | 'volume-x' | 'volume-1' | 'volume-2' | 'minimize' | 'maximize'
+  | 'menu' | 'pin';
 
 export interface SidebarItem {
   id: string;

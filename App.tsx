@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
-import Sidebar from './components/Sidebar';
+import { MobileLayout } from './components/mobile/MobileLayout';
 
 // Page Imports
 import HomePage from './pages/HomePage';
@@ -45,10 +45,8 @@ import NotFoundPage from './pages/NotFoundPage';
 const App: React.FC = () => {
   return (
     <HashRouter>
-      <div className="flex h-screen bg-background text-foreground">
-        <Sidebar />
-        <main className="flex-1 overflow-y-auto">
-          <Routes>
+      <MobileLayout>
+        <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/create" element={<CreatePage />} />
             <Route path="/following" element={<FollowingPage />} />
@@ -99,8 +97,7 @@ const App: React.FC = () => {
             
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
-        </main>
-      </div>
+      </MobileLayout>
     </HashRouter>
   );
 };
