@@ -1,0 +1,5 @@
+{
+  "name": "Reelverse",
+  "description": "A decentralized short/long-form content platform powered by Lens Protocol and hybrid payments. This application provides the frontend user interface for content creation, discovery, and monetization.",
+  "requestFramePermissions": []
+}

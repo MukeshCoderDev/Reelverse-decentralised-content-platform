@@ -1,0 +1,117 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reelverse</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              background: 'hsl(var(--background))',
+              foreground: 'hsl(var(--foreground))',
+              card: 'hsl(var(--card))',
+              'card-foreground': 'hsl(var(--card-foreground))',
+              popover: 'hsl(var(--popover))',
+              'popover-foreground': 'hsl(var(--popover-foreground))',
+              primary: 'hsl(var(--primary))',
+              'primary-foreground': 'hsl(var(--primary-foreground))',
+              secondary: 'hsl(var(--secondary))',
+              'secondary-foreground': 'hsl(var(--secondary-foreground))',
+              muted: 'hsl(var(--muted))',
+              'muted-foreground': 'hsl(var(--muted-foreground))',
+              accent: 'hsl(var(--accent))',
+              'accent-foreground': 'hsl(var(--accent-foreground))',
+              destructive: 'hsl(var(--destructive))',
+              'destructive-foreground': 'hsl(var(--destructive-foreground))',
+              border: 'hsl(var(--border))',
+              input: 'hsl(var(--input))',
+              ring: 'hsl(var(--ring))',
+            },
+            borderRadius: {
+              lg: `0.5rem`,
+              md: `calc(0.5rem - 2px)`,
+              sm: `calc(0.5rem - 4px)`,
+            },
+          }
+        }
+      }
+    </script>
+    <style>
+      :root {
+        --background: 240 10% 3.9%;
+        --foreground: 0 0% 98%;
+        --card: 240 10% 3.9%;
+        --card-foreground: 0 0% 98%;
+        --popover: 240 10% 3.9%;
+        --popover-foreground: 0 0% 98%;
+        --primary: 262.1 83.3% 57.8%;
+        --primary-foreground: 0 0% 98%;
+        --secondary: 240 3.7% 15.9%;
+        --secondary-foreground: 0 0% 98%;
+        --muted: 240 3.7% 15.9%;
+        --muted-foreground: 240 5% 64.9%;
+        --accent: 240 3.7% 15.9%;
+        --accent-foreground: 0 0% 98%;
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 240 3.7% 15.9%;
+        --input: 240 3.7% 15.9%;
+        --ring: 262.1 83.3% 57.8%;
+      }
+      .line-clamp-1 {
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 1;
+      }
+      .line-clamp-2 {
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+      }
+      /* YouTube-style scrollbar hiding */
+      .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+      /* Smooth scrolling for all elements */
+      * {
+        scroll-behavior: smooth;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://esm.sh/@google/genai@^1.13.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "react-router-dom": "https://esm.sh/react-router-dom@6.22.3",
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.1/",
+    "react/": "https://esm.sh/react@^19.1.1/",
+    "path": "https://esm.sh/path@^0.12.7"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-background text-foreground">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+    <script>
+      // After page load, initialize Lucide icons
+      document.addEventListener('DOMContentLoaded', () => {
+        lucide.createIcons();
+      });
+    </script>
+  </body>
+</html>
