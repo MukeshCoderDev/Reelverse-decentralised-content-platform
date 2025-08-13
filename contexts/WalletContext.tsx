@@ -2,8 +2,10 @@ import React, { createContext, useContext, useReducer, useEffect, ReactNode } fr
 import { WalletContextType, WalletState, WalletType } from '../types/wallet';
 import { WalletService } from '../services/wallet/WalletService';
 import { NetworkService } from '../services/wallet/NetworkService';
+import { SiweService } from '../services/siweService';
 import { STORAGE_KEYS, DEFAULT_CHAIN_ID } from '../constants/wallet';
 import { WalletErrorHandler } from '../utils/walletErrors';
+import { BrowserProvider } from 'ethers';
 
 // Initial state
 const initialState: WalletState = {
@@ -14,7 +16,12 @@ const initialState: WalletState = {
   balance: null,
   balanceLoading: false,
   walletType: null,
-  error: null
+  error: null,
+  // SIWE Authentication State
+  isAuthenticated: false,
+  isAuthenticating: false,
+  session: null,
+  authError: null
 };
 
 // Action types
@@ -27,7 +34,13 @@ type WalletAction =
   | { type: 'SET_BALANCE'; payload: string | null }
   | { type: 'SET_BALANCE_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
-  | { type: 'CLEAR_ERROR' };
+  | { type: 'CLEAR_ERROR' }
+  // SIWE Authentication Actions
+  | { type: 'SET_AUTHENTICATING'; payload: boolean }
+  | { type: 'SET_AUTHENTICATED'; payload: { session: string } }
+  | { type: 'SET_UNAUTHENTICATED' }
+  | { type: 'SET_AUTH_ERROR'; payload: string | null }
+  | { type: 'CLEAR_AUTH_ERROR' };
 
 // Reducer
 function walletReducer(state: WalletState, action: WalletAction): WalletState {
@@ -93,6 +106,45 @@ function walletReducer(state: WalletState, action: WalletAction): WalletState {
         error: null
       };
 
+    // SIWE Authentication Cases
+    case 'SET_AUTHENTICATING':
+      return {
+        ...state,
+        isAuthenticating: action.payload,
+        authError: action.payload ? null : state.authError
+      };
+
+    case 'SET_AUTHENTICATED':
+      return {
+        ...state,
+        isAuthenticated: true,
+        isAuthenticating: false,
+        session: action.payload.session,
+        authError: null
+      };
+
+    case 'SET_UNAUTHENTICATED':
+      return {
+        ...state,
+        isAuthenticated: false,
+        isAuthenticating: false,
+        session: null,
+        authError: null
+      };
+
+    case 'SET_AUTH_ERROR':
+      return {
+        ...state,
+        authError: action.payload,
+        isAuthenticating: false
+      };
+
+    case 'CLEAR_AUTH_ERROR':
+      return {
+        ...state,
+        authError: null
+      };
+
     default:
       return state;
   }
@@ -110,11 +162,22 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(walletReducer, initialState);
   const walletService = WalletService.getInstance();
   const networkService = NetworkService.getInstance();
+  const siweService = SiweService.getInstance();
 
-  // Auto-connect on mount
+  // Auto-connect and check session on mount
   useEffect(() => {
     const autoConnect = async () => {
       try {
+        // Check for existing SIWE session first
+        const sessionStatus = await siweService.getSession();
+        if (sessionStatus.isAuthenticated && sessionStatus.session) {
+          dispatch({ 
+            type: 'SET_AUTHENTICATED', 
+            payload: { session: sessionStatus.session } 
+          });
+        }
+
+        // Then check for wallet auto-connect
         const savedWalletType = localStorage.getItem(STORAGE_KEYS.WALLET_TYPE) as WalletType;
         const autoConnectEnabled = localStorage.getItem(STORAGE_KEYS.AUTO_CONNECT) === 'true';
 
@@ -243,6 +306,12 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const disconnect = async (): Promise<void> => {
     try {
       console.log('Disconnecting wallet...');
+      
+      // Clear SIWE session first
+      if (state.isAuthenticated) {
+        await siweService.logout();
+      }
+      
       await walletService.disconnect();
       dispatch({ type: 'SET_DISCONNECTED' });
       clearStoredConnection();
@@ -282,6 +351,54 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     dispatch({ type: 'CLEAR_ERROR' });
   };
 
+  // Clear auth error function
+  const clearAuthError = (): void => {
+    dispatch({ type: 'CLEAR_AUTH_ERROR' });
+  };
+
+  // SIWE Authentication function
+  const authenticate = async (): Promise<void> => {
+    if (!state.isConnected || !state.account) {
+      throw new Error('Wallet must be connected before authentication');
+    }
+
+    try {
+      dispatch({ type: 'SET_AUTHENTICATING', payload: true });
+      dispatch({ type: 'CLEAR_AUTH_ERROR' });
+
+      // Get the provider from the wallet service
+      const provider = new BrowserProvider(window.ethereum);
+      
+      // Perform SIWE authentication
+      const result = await siweService.authenticate(provider, state.account);
+
+      if (result.success && result.session) {
+        dispatch({ 
+          type: 'SET_AUTHENTICATED', 
+          payload: { session: result.session } 
+        });
+      } else {
+        throw new Error(result.error || 'Authentication failed');
+      }
+    } catch (error: any) {
+      const errorMessage = error.message || 'Authentication failed';
+      dispatch({ type: 'SET_AUTH_ERROR', payload: errorMessage });
+      throw error;
+    }
+  };
+
+  // Logout function
+  const logout = async (): Promise<void> => {
+    try {
+      await siweService.logout();
+      dispatch({ type: 'SET_UNAUTHENTICATED' });
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still clear state even if logout fails
+      dispatch({ type: 'SET_UNAUTHENTICATED' });
+    }
+  };
+
   // Get network name
   const networkName = state.chainId ? networkService.getNetworkName(state.chainId) : null;
 
@@ -298,11 +415,22 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     walletType: state.walletType,
     error: state.error,
 
+    // SIWE Authentication State
+    isAuthenticated: state.isAuthenticated,
+    isAuthenticating: state.isAuthenticating,
+    session: state.session,
+    authError: state.authError,
+
     // Actions
     connect,
     disconnect,
     switchNetwork,
-    clearError
+    clearError,
+
+    // SIWE Authentication Actions
+    authenticate,
+    logout,
+    clearAuthError
   };
 
   return (

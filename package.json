@@ -15,11 +15,29 @@
     "react-dom": "^19.1.1",
     "path": "^0.12.7",
     "@walletconnect/web3-provider": "^1.8.0",
-    "@coinbase/wallet-sdk": "^3.7.1"
+    "@coinbase/wallet-sdk": "^3.7.1",
+    "siwe": "^2.1.4",
+    "ethers": "^6.8.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
-  }
+  },
+  "description": "This contains everything you need to run your app locally.",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MukeshCoderDev/Reelverse-decentralised-content-platform.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MukeshCoderDev/Reelverse-decentralised-content-platform/issues"
+  },
+  "homepage": "https://github.com/MukeshCoderDev/Reelverse-decentralised-content-platform#readme"
 }

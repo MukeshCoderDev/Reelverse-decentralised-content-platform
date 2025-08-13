@@ -38,6 +38,11 @@ export interface WalletState {
   balanceLoading: boolean;
   walletType: WalletType | null;
   error: string | null;
+  // SIWE Authentication State
+  isAuthenticated: boolean;
+  isAuthenticating: boolean;
+  session: string | null;
+  authError: string | null;
 }
 
 export interface ConnectionResult {
@@ -64,14 +69,25 @@ export interface WalletContextType {
   // Wallet Information
   walletType: WalletType | null;
   
+  // SIWE Authentication State
+  isAuthenticated: boolean;
+  isAuthenticating: boolean;
+  session: string | null;
+  authError: string | null;
+  
   // Actions
   connect: (walletType: WalletType) => Promise<void>;
   disconnect: () => Promise<void>;
   switchNetwork: (chainId: number) => Promise<void>;
   
+  // SIWE Authentication Actions
+  authenticate: () => Promise<void>;
+  logout: () => Promise<void>;
+  
   // Error Handling
   error: string | null;
   clearError: () => void;
+  clearAuthError: () => void;
 }
 
 export interface WalletProvider {
