@@ -13,7 +13,9 @@
     "react-router-dom": "6.22.3",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "path": "^0.12.7"
+    "path": "^0.12.7",
+    "@walletconnect/web3-provider": "^1.8.0",
+    "@coinbase/wallet-sdk": "^3.7.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

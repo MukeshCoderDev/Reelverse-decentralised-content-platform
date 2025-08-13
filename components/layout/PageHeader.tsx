@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { benchmarks } from '../../lib/benchmarks';
 import Icon from '../Icon';
+import { WalletButton } from '../wallet/WalletButton';
 
 export function PageHeader({ id, title, actions }: { id: keyof typeof benchmarks; title: string; actions?: React.ReactNode }) {
     const [tooltipVisible, setTooltipVisible] = useState(false);
@@ -24,7 +25,10 @@ export function PageHeader({ id, title, actions }: { id: keyof typeof benchmarks
                     )}
                 </div>
             </div>
-            <div className="flex items-center gap-2">{actions}</div>
+            <div className="flex items-center gap-2">
+                <WalletButton />
+                {actions}
+            </div>
         </div>
     );
 }

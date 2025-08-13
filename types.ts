@@ -10,7 +10,8 @@ export type IconName =
   | 'gamepad-2' | 'music' | 'cpu' | 'graduation-cap' | 'tv' | 'trophy' | 'newspaper'
   | 'trending-down' | 'list' | 'grid' | 'check' | 'trash' | 'more-horizontal' | 'x'
   | 'download' | 'pause' | 'volume-x' | 'volume-1' | 'volume-2' | 'minimize' | 'maximize'
-  | 'menu' | 'pin';
+  | 'menu' | 'pin' | 'copy' | 'external-link' | 'refresh-cw' | 'loader' | 'alert-circle'
+  | 'check-circle' | 'wifi' | 'wifi-off' | 'link' | 'unlink' | 'globe';
 
 export interface SidebarItem {
   id: string;

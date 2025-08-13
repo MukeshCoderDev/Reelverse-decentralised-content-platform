@@ -1,6 +1,7 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Icon from '../Icon';
+import { WalletButton } from '../wallet/WalletButton';
 
 interface MobileHeaderProps {
     onMenuClick: () => void;
@@ -88,6 +89,9 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({ onMenuClick }) => {
 
                 {/* Right side */}
                 <div className="flex items-center gap-2">
+                    {/* Wallet Button */}
+                    <WalletButton size="sm" />
+                    
                     {/* Search button */}
                     <button
                         onClick={() => navigate('/explore')}

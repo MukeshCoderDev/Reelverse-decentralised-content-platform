@@ -2,6 +2,7 @@
 import React from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { MobileLayout } from './components/mobile/MobileLayout';
+import { WalletProvider } from './contexts/WalletContext';
 
 // Page Imports
 import HomePage from './pages/HomePage';
@@ -44,8 +45,9 @@ import NotFoundPage from './pages/NotFoundPage';
 
 const App: React.FC = () => {
   return (
-    <HashRouter>
-      <MobileLayout>
+    <WalletProvider>
+      <HashRouter>
+        <MobileLayout>
         <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/create" element={<CreatePage />} />
@@ -97,8 +99,9 @@ const App: React.FC = () => {
             
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
-      </MobileLayout>
-    </HashRouter>
+        </MobileLayout>
+      </HashRouter>
+    </WalletProvider>
   );
 };
 
