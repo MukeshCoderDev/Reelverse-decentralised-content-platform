@@ -142,7 +142,6 @@
 
 - [x] 16. Develop upload pipeline orchestration service
 
-
   - Create upload request handling with provisional ID generation
   - Implement file encryption using AES-128 CENC
   - Add Livepeer transcoding integration
@@ -152,12 +151,7 @@
   - Write tests for complete upload pipeline
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
 
-- [ ] 17. Build scene consent management system
-
-
-
-
-
+- [x] 17. Build scene consent management system
 
   - Create scene hash generation and participant tracking
   - Implement EIP-712 typed consent data structures
@@ -166,9 +160,7 @@
   - Write tests for multi-participant consent flows
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
 
-- [ ] 18. Implement moderation and DMCA service
-
-
+- [x] 18. Implement moderation and DMCA service
 
   - Create content flagging and moderation queue management
   - Implement moderator decision processing
@@ -177,8 +169,7 @@
   - Write tests for moderation workflows
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
 
-- [ ] 19. Create payout management service
-
+- [x] 19. Create payout management service
 
   - Implement balance tracking for USDC and fiat earnings
   - Create instant USDC withdrawal functionality
@@ -189,10 +180,7 @@
 
 ## Frontend Enhancement (Preserving Existing UI/UX)
 
-- [ ] 20. Enhance existing React application with additional Web3 capabilities
-
-
-
+- [x] 20. Enhance existing React application with additional Web3 capabilities
 
   - Add Wagmi and Viem to existing package.json for enhanced Ethereum interactions
   - Integrate React Query with existing state management patterns
@@ -201,7 +189,7 @@
   - Enhance existing build pipeline to support new Web3 dependencies
   - _Requirements: 1.1, 1.3_
 
-- [ ] 21. Enhance existing wallet components with SIWE authentication
+- [x] 21. Enhance existing wallet components with SIWE authentication
 
   - Extend existing WalletButton.tsx component with SIWE authentication flow
   - Enhance existing WalletConnectModal.tsx with SIWE message signing
@@ -211,7 +199,7 @@
   - Write component tests for enhanced authentication flows
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
 
-- [ ] 22. Add age verification to existing content system
+- [x] 22. Add age verification to existing content system
 
   - Create AgeGateModal component using existing modal patterns and styling
   - Integrate Persona KYC flow with existing content access system
@@ -221,7 +209,7 @@
   - Write tests for age verification integration with existing UI flows
   - _Requirements: 2.1, 2.2, 2.4, 2.6_
 
-- [ ] 23. Enhance existing video player with access control
+- [x] 23. Enhance existing video player with access control
 
   - Add PlayerGuard wrapper to existing VideoPlayer.tsx component
   - Integrate multi-step access verification with existing ContentCard.tsx click handlers
@@ -231,7 +219,7 @@
   - Write comprehensive component tests for enhanced player functionality
   - _Requirements: 6.1, 6.2, 6.6, 10.3_
 
-- [ ] 24. Add watermarking to existing video player
+- [x] 24. Add watermarking to existing video player
 
   - Enhance existing VideoPlayer.tsx with dynamic watermark overlay functionality
   - Add moving overlay with wallet address and session ID to existing player controls
@@ -240,7 +228,8 @@
   - Extend existing player tests to include watermarking functionality
   - _Requirements: 6.5, 13.3_
 
-- [ ] 25. Add payment options to existing content access flow
+- [x] 25. Add payment options to existing content access flow
+
 
   - Create CheckoutModal using existing modal patterns and styling
   - Add USDC payment tab to existing payment interfaces

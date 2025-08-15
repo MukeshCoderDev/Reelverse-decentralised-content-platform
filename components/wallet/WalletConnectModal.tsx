@@ -12,8 +12,21 @@ interface WalletConnectModalProps {
 }
 
 export const WalletConnectModal: React.FC<WalletConnectModalProps> = ({ isOpen, onClose }) => {
-  const { connect, isConnecting, error, clearError } = useWallet();
+  const { 
+    connect, 
+    isConnecting, 
+    error, 
+    clearError,
+    isConnected,
+    account,
+    isAuthenticated,
+    isAuthenticating,
+    authError,
+    authenticate,
+    clearAuthError
+  } = useWallet();
   const [selectedWallet, setSelectedWallet] = useState<WalletType | null>(null);
+  const [showSiweStep, setShowSiweStep] = useState(false);
 
   if (!isOpen) return null;
 
@@ -28,7 +41,8 @@ export const WalletConnectModal: React.FC<WalletConnectModalProps> = ({ isOpen, 
       }
       
       await connect(walletType);
-      onClose();
+      // After successful connection, show SIWE authentication step
+      setShowSiweStep(true);
     } catch (error) {
       console.error('Connection failed:', error);
       // Error is handled by the context
@@ -37,10 +51,26 @@ export const WalletConnectModal: React.FC<WalletConnectModalProps> = ({ isOpen, 
     }
   };
 
+  const handleSiweAuthenticate = async () => {
+    try {
+      await authenticate();
+      onClose();
+    } catch (error) {
+      console.error('SIWE authentication failed:', error);
+      // Error is handled by the context
+    }
+  };
+
+  const handleSkipSiwe = () => {
+    onClose();
+  };
+
   const handleClose = () => {
-    if (!isConnecting) {
+    if (!isConnecting && !isAuthenticating) {
       clearError();
+      clearAuthError();
       setSelectedWallet(null);
+      setShowSiweStep(false);
       onClose();
     }
   };
@@ -73,46 +103,142 @@ export const WalletConnectModal: React.FC<WalletConnectModalProps> = ({ isOpen, 
 
         {/* Content */}
         <div className="p-6 overflow-y-auto flex-1" style={{ scrollbarWidth: 'thin' }}>
-          {/* Description */}
-          <div className="text-center mb-6">
-            <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-              <Icon name="wallet" size={24} className="text-white" />
-            </div>
-            <p className="text-muted-foreground">
-              Connect your wallet to access Web3 features and manage your digital assets
-            </p>
-          </div>
+          {/* SIWE Authentication Step */}
+          {showSiweStep && isConnected && account ? (
+            <>
+              {/* SIWE Description */}
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
+                  <Icon name="shield-check" size={24} className="text-white" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Authenticate with Ethereum</h3>
+                <p className="text-muted-foreground">
+                  Sign a message to prove you own this wallet address. This enables secure access to platform features.
+                </p>
+              </div>
 
-          {/* Error Display */}
-          {error && (
-            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-              <div className="flex items-start gap-3">
-                <Icon name="alert-circle" size={16} className="text-red-500 mt-0.5 flex-shrink-0" />
-                <div className="text-sm flex-1">
-                  <p className="font-medium text-red-500 mb-1">Connection Failed</p>
-                  <p className="text-red-400 mb-2">{error}</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      clearError();
-                      // Retry the last selected wallet if available
-                      if (selectedWallet) {
-                        handleWalletSelect(selectedWallet);
-                      }
-                    }}
-                    className="h-6 px-2 text-xs border-red-500/30 text-red-500 hover:bg-red-500/10"
-                  >
-                    <Icon name="refresh-cw" size={12} className="mr-1" />
-                    Retry
-                  </Button>
+              {/* Connected Wallet Info */}
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
+                    <Icon name="wallet" size={20} className="text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-green-800">Wallet Connected</p>
+                    <p className="text-sm text-green-600 font-mono">{WalletUtils.formatAddress(account)}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
 
-          {/* Wallet Options */}
-          <div className="space-y-3">
+              {/* Auth Error Display */}
+              {authError && (
+                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <Icon name="alert-circle" size={16} className="text-red-500 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm flex-1">
+                      <p className="font-medium text-red-500 mb-1">Authentication Failed</p>
+                      <p className="text-red-400 mb-2">{authError}</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={clearAuthError}
+                        className="h-6 px-2 text-xs border-red-500/30 text-red-500 hover:bg-red-500/10"
+                      >
+                        <Icon name="x" size={12} className="mr-1" />
+                        Clear
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SIWE Actions */}
+              <div className="space-y-3">
+                <Button
+                  onClick={handleSiweAuthenticate}
+                  disabled={isAuthenticating}
+                  className="w-full h-12 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
+                >
+                  {isAuthenticating ? (
+                    <>
+                      <Icon name="loader" className="mr-2 animate-spin" size={16} />
+                      Authenticating...
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="shield-check" className="mr-2" size={16} />
+                      Sign Message to Authenticate
+                    </>
+                  )}
+                </Button>
+
+                <Button
+                  onClick={handleSkipSiwe}
+                  variant="outline"
+                  disabled={isAuthenticating}
+                  className="w-full"
+                >
+                  Skip for Now
+                </Button>
+              </div>
+
+              {/* SIWE Info */}
+              <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <Icon name="info" size={16} className="text-blue-500 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm">
+                    <p className="font-medium text-blue-500 mb-1">About Sign-In with Ethereum</p>
+                    <p className="text-muted-foreground">
+                      SIWE is a secure authentication method that proves wallet ownership without exposing private keys. 
+                      It enables access to premium features and personalized content.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Original Wallet Selection Content */}
+              {/* Description */}
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                  <Icon name="wallet" size={24} className="text-white" />
+                </div>
+                <p className="text-muted-foreground">
+                  Connect your wallet to access Web3 features and manage your digital assets
+                </p>
+              </div>
+
+              {/* Error Display */}
+              {error && (
+                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <Icon name="alert-circle" size={16} className="text-red-500 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm flex-1">
+                      <p className="font-medium text-red-500 mb-1">Connection Failed</p>
+                      <p className="text-red-400 mb-2">{error}</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          clearError();
+                          // Retry the last selected wallet if available
+                          if (selectedWallet) {
+                            handleWalletSelect(selectedWallet);
+                          }
+                        }}
+                        className="h-6 px-2 text-xs border-red-500/30 text-red-500 hover:bg-red-500/10"
+                      >
+                        <Icon name="refresh-cw" size={12} className="mr-1" />
+                        Retry
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Wallet Options */}
+              <div className="space-y-3">
             {SUPPORTED_WALLETS.map((walletType) => {
               const walletInfo = WALLET_INFO[walletType];
               const isInstalled = WalletUtils.isWalletInstalled(walletType);
@@ -176,69 +302,71 @@ export const WalletConnectModal: React.FC<WalletConnectModalProps> = ({ isOpen, 
                   </div>
                 </Button>
               );
-            })}
-          </div>
+              })}
+              </div>
 
-          {/* Security Notice */}
-          <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-            <div className="flex items-start gap-3">
-              <Icon name="shield-check" size={16} className="text-blue-500 mt-0.5 flex-shrink-0" />
-              <div className="text-sm">
-                <p className="font-medium text-blue-500 mb-1">Secure Connection</p>
-                <p className="text-muted-foreground">
-                  Your wallet connection is encrypted and secure. We never store your private keys.
+              {/* Security Notice */}
+              <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <Icon name="shield-check" size={16} className="text-blue-500 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm">
+                    <p className="font-medium text-blue-500 mb-1">Secure Connection</p>
+                    <p className="text-muted-foreground">
+                      Your wallet connection is encrypted and secure. We never store your private keys.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Debug Section (only in development) */}
+              {process.env.NODE_ENV === 'development' && (
+                <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Icon name="bug" size={14} className="text-yellow-500" />
+                    <span className="text-xs font-medium text-yellow-500">Debug Tools</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      WalletUtils.debugWalletProviders();
+                      // Also check if MetaMask is actually available
+                      const ethereum = (window as any).ethereum;
+                      if (ethereum) {
+                        console.log('Attempting direct MetaMask test...');
+                        ethereum.request({ method: 'eth_requestAccounts' })
+                          .then((accounts: string[]) => {
+                            console.log('Direct MetaMask test successful:', accounts);
+                          })
+                          .catch((error: any) => {
+                            console.error('Direct MetaMask test failed:', error);
+                          });
+                      }
+                    }}
+                    className="h-6 px-2 text-xs"
+                  >
+                    <Icon name="terminal" size={12} className="mr-1" />
+                    Debug Providers
+                  </Button>
+                </div>
+              )}
+
+              {/* Help Text */}
+              <div className="mt-4 text-center">
+                <p className="text-xs text-muted-foreground">
+                  Don't have a wallet?{' '}
+                  <a
+                    href="https://ethereum.org/en/wallets/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    Learn more about wallets
+                  </a>
                 </p>
               </div>
-            </div>
-          </div>
-
-          {/* Debug Section (only in development) */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <Icon name="bug" size={14} className="text-yellow-500" />
-                <span className="text-xs font-medium text-yellow-500">Debug Tools</span>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  WalletUtils.debugWalletProviders();
-                  // Also check if MetaMask is actually available
-                  const ethereum = (window as any).ethereum;
-                  if (ethereum) {
-                    console.log('Attempting direct MetaMask test...');
-                    ethereum.request({ method: 'eth_requestAccounts' })
-                      .then((accounts: string[]) => {
-                        console.log('Direct MetaMask test successful:', accounts);
-                      })
-                      .catch((error: any) => {
-                        console.error('Direct MetaMask test failed:', error);
-                      });
-                  }
-                }}
-                className="h-6 px-2 text-xs"
-              >
-                <Icon name="terminal" size={12} className="mr-1" />
-                Debug Providers
-              </Button>
-            </div>
+            </>
           )}
-
-          {/* Help Text */}
-          <div className="mt-4 text-center">
-            <p className="text-xs text-muted-foreground">
-              Don't have a wallet?{' '}
-              <a
-                href="https://ethereum.org/en/wallets/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline"
-              >
-                Learn more about wallets
-              </a>
-            </p>
-          </div>
         </div>
       </div>
     </div>

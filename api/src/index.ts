@@ -19,6 +19,8 @@ import uploadRoutes from './routes/upload';
 import paymentRoutes from './routes/payment';
 import ageVerificationRoutes from './routes/ageVerification';
 import consentRoutes from './routes/consentRoutes';
+import moderationRoutes from './routes/moderation';
+import payoutRoutes from './routes/payout';
 import webhookRoutes from './routes/webhooks';
 
 // Load environment variables
@@ -98,6 +100,8 @@ app.use(`/api/${API_VERSION}/upload`, uploadRoutes);
 app.use(`/api/${API_VERSION}/payment`, paymentRoutes);
 app.use(`/api/${API_VERSION}/age-verification`, ageVerificationRoutes);
 app.use(`/api/${API_VERSION}/consent`, consentRoutes);
+app.use(`/api/${API_VERSION}/moderation`, moderationRoutes);
+app.use(`/api/${API_VERSION}/payout`, payoutRoutes);
 app.use(`/api/${API_VERSION}/webhooks`, webhookRoutes);
 
 // Error handling middleware

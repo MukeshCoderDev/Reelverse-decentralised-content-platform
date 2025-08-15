@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Icon from '../Icon';
+import { WatermarkService, WatermarkData, WatermarkPosition } from '../../services/watermarkService';
 
 interface VideoPlayerProps {
     src: string;
@@ -10,6 +11,9 @@ interface VideoPlayerProps {
     onTimeUpdate?: (currentTime: number, duration: number) => void;
     onEnded?: () => void;
     onError?: (error: string) => void;
+    // Watermarking props
+    enableWatermark?: boolean;
+    watermarkData?: WatermarkData;
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -20,7 +24,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     className = '',
     onTimeUpdate,
     onEnded,
-    onError
+    onError,
+    enableWatermark = false,
+    watermarkData
 }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -40,7 +46,46 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const [currentChapter, setCurrentChapter] = useState(0);
     const [isPictureInPicture, setIsPictureInPicture] = useState(false);
 
+    // Watermark state
+    const [watermarkPosition, setWatermarkPosition] = useState<WatermarkPosition>({ x: 10, y: 10 });
+    const [watermarkVisible, setWatermarkVisible] = useState(true);
+    const watermarkIntervalRef = useRef<NodeJS.Timeout>();
+    const watermarkService = WatermarkService.getInstance();
+
     const controlsTimeoutRef = useRef<NodeJS.Timeout>();
+
+    // Watermark movement effect
+    useEffect(() => {
+        if (!enableWatermark || !watermarkData || !watermarkService.shouldShowWatermark(isPlaying, !!error, isLoading)) {
+            if (watermarkIntervalRef.current) {
+                clearInterval(watermarkIntervalRef.current);
+            }
+            return;
+        }
+
+        const config = watermarkService.getConfig();
+        
+        // Move watermark at configured intervals
+        watermarkIntervalRef.current = setInterval(() => {
+            const nextPosition = watermarkService.getNextPosition(watermarkPosition);
+            
+            // Log watermark display for audit
+            watermarkService.logWatermarkDisplay(watermarkData, nextPosition);
+            
+            // Briefly hide watermark during transition
+            setWatermarkVisible(false);
+            setTimeout(() => {
+                setWatermarkPosition(nextPosition);
+                setWatermarkVisible(true);
+            }, config.fadeTransition);
+        }, config.moveInterval);
+
+        return () => {
+            if (watermarkIntervalRef.current) {
+                clearInterval(watermarkIntervalRef.current);
+            }
+        };
+    }, [enableWatermark, watermarkData, isPlaying, error, isLoading, watermarkPosition]);
 
     useEffect(() => {
         const video = videoRef.current;
@@ -246,6 +291,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         return `${minutes}:${seconds.toString().padStart(2, '0')}`;
     };
 
+    const getWatermarkText = () => {
+        if (!watermarkData || !watermarkService.validateWatermarkData(watermarkData)) {
+            return '';
+        }
+        return watermarkService.generateWatermarkText(watermarkData);
+    };
+
+    const getPiPWatermarkText = () => {
+        if (!watermarkData) return 'Protected Content';
+        return watermarkService.createPiPWatermark(watermarkData);
+    };
+
     const handleMouseMove = () => {
         setShowControls(true);
         if (controlsTimeoutRef.current) {
@@ -363,6 +420,25 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             {isLoading && !error && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+                </div>
+            )}
+
+            {/* Dynamic Watermark Overlay */}
+            {enableWatermark && watermarkData && watermarkService.shouldShowWatermark(isPlaying, !!error, isLoading) && watermarkVisible && (
+                <div 
+                    className="absolute pointer-events-none select-none z-30"
+                    style={watermarkService.generateWatermarkStyles(watermarkPosition)}
+                >
+                    {getWatermarkText()}
+                </div>
+            )}
+
+            {/* Watermark for Picture-in-Picture */}
+            {enableWatermark && watermarkData && isPictureInPicture && (
+                <div className="absolute top-2 left-2 pointer-events-none select-none z-30">
+                    <div className="bg-black/60 text-white px-2 py-1 rounded text-xs font-mono">
+                        {getPiPWatermarkText()}
+                    </div>
                 </div>
             )}
 

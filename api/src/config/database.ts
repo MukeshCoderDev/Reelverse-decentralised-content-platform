@@ -103,6 +103,88 @@ export async function initializeSchema(): Promise<void> {
       )
     `);
     
+    // DMCA requests table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS dmca_requests (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        content_id BIGINT NOT NULL,
+        claimant_name VARCHAR(200) NOT NULL,
+        claimant_email VARCHAR(200) NOT NULL,
+        claimant_address TEXT,
+        copyrighted_work TEXT NOT NULL,
+        infringing_urls TEXT[] DEFAULT ARRAY[]::TEXT[],
+        perceptual_hash_matches TEXT[] DEFAULT ARRAY[]::TEXT[],
+        status VARCHAR(20) DEFAULT 'pending',
+        submitted_at TIMESTAMP DEFAULT NOW(),
+        processed_at TIMESTAMP,
+        takedown_at TIMESTAMP
+      )
+    `);
+    
+    // Content metadata for perceptual hashing
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS content_metadata (
+        content_id BIGINT PRIMARY KEY,
+        title VARCHAR(500),
+        description TEXT,
+        creator_wallet VARCHAR(42),
+        perceptual_hash VARCHAR(64),
+        file_hash VARCHAR(64),
+        duration_seconds INTEGER,
+        resolution VARCHAR(20),
+        file_size_bytes BIGINT,
+        upload_date TIMESTAMP DEFAULT NOW(),
+        last_accessed TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    
+    // Creator earnings tracking
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS creator_earnings (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        creator_wallet VARCHAR(42) NOT NULL,
+        amount DECIMAL(20,6) NOT NULL,
+        currency VARCHAR(10) NOT NULL, -- 'USDC', 'USD'
+        source VARCHAR(50) NOT NULL, -- 'content_sale', 'subscription', 'tip'
+        source_id VARCHAR(100), -- Reference to content/subscription/etc
+        status VARCHAR(20) DEFAULT 'available', -- 'available', 'pending', 'paid_out'
+        earned_at TIMESTAMP DEFAULT NOW(),
+        paid_out_at TIMESTAMP
+      )
+    `);
+    
+    // Payout methods
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS payout_methods (
+        id VARCHAR(100) PRIMARY KEY,
+        creator_wallet VARCHAR(42) NOT NULL,
+        type VARCHAR(20) NOT NULL, -- 'usdc', 'paxum', 'bank_transfer'
+        details JSONB NOT NULL,
+        is_default BOOLEAN DEFAULT FALSE,
+        is_verified BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    
+    // Payout requests
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS payout_requests (
+        id VARCHAR(100) PRIMARY KEY,
+        creator_wallet VARCHAR(42) NOT NULL,
+        amount DECIMAL(20,6) NOT NULL,
+        currency VARCHAR(10) NOT NULL, -- 'USDC', 'USD'
+        payout_method_id VARCHAR(100) NOT NULL,
+        status VARCHAR(20) DEFAULT 'pending', -- 'pending', 'processing', 'completed', 'failed', 'cancelled'
+        transaction_hash VARCHAR(66),
+        paxum_transaction_id VARCHAR(100),
+        failure_reason TEXT,
+        requested_at TIMESTAMP DEFAULT NOW(),
+        processed_at TIMESTAMP,
+        completed_at TIMESTAMP
+      )
+    `);
+    
     // Upload tracking
     await client.query(`
       CREATE TABLE IF NOT EXISTS upload_tracking (
@@ -245,6 +327,19 @@ export async function initializeSchema(): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_content_sessions_user ON content_sessions(user_wallet);
       CREATE INDEX IF NOT EXISTS idx_content_sessions_session ON content_sessions(session_id);
       CREATE INDEX IF NOT EXISTS idx_moderation_queue_status ON moderation_queue(status);
+      CREATE INDEX IF NOT EXISTS idx_moderation_queue_moderator ON moderation_queue(moderator_wallet);
+      CREATE INDEX IF NOT EXISTS idx_moderation_queue_content ON moderation_queue(content_id);
+      CREATE INDEX IF NOT EXISTS idx_dmca_requests_status ON dmca_requests(status);
+      CREATE INDEX IF NOT EXISTS idx_dmca_requests_content ON dmca_requests(content_id);
+      CREATE INDEX IF NOT EXISTS idx_content_metadata_hash ON content_metadata(perceptual_hash);
+      CREATE INDEX IF NOT EXISTS idx_content_metadata_creator ON content_metadata(creator_wallet);
+      CREATE INDEX IF NOT EXISTS idx_creator_earnings_wallet ON creator_earnings(creator_wallet);
+      CREATE INDEX IF NOT EXISTS idx_creator_earnings_status ON creator_earnings(status);
+      CREATE INDEX IF NOT EXISTS idx_creator_earnings_currency ON creator_earnings(currency);
+      CREATE INDEX IF NOT EXISTS idx_payout_methods_creator ON payout_methods(creator_wallet);
+      CREATE INDEX IF NOT EXISTS idx_payout_methods_default ON payout_methods(creator_wallet, is_default);
+      CREATE INDEX IF NOT EXISTS idx_payout_requests_creator ON payout_requests(creator_wallet);
+      CREATE INDEX IF NOT EXISTS idx_payout_requests_status ON payout_requests(status);
       CREATE INDEX IF NOT EXISTS idx_upload_tracking_creator ON upload_tracking(creator_wallet);
       CREATE INDEX IF NOT EXISTS idx_upload_tracking_status ON upload_tracking(status);
       CREATE INDEX IF NOT EXISTS idx_payment_tracking_user ON payment_tracking(user_wallet);

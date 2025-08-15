@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { VideoPlayer } from './VideoPlayer';
+import { PlayerGuard } from './PlayerGuard';
 import Icon from '../Icon';
 
 interface Comment {
@@ -37,12 +38,25 @@ interface YouTubeStyleVideoPlayerProps {
     videoSrc: string;
     videoData: VideoData;
     onClose: () => void;
+    // Access control props
+    contentId?: string;
+    isAdultContent?: boolean;
+    ageRating?: '18+' | '21+';
+    requiresEntitlement?: boolean;
+    priceUSDC?: number;
+    priceFiat?: number;
 }
 
 export const YouTubeStyleVideoPlayer: React.FC<YouTubeStyleVideoPlayerProps> = ({
     videoSrc,
     videoData,
-    onClose
+    onClose,
+    contentId = videoData.id,
+    isAdultContent = false,
+    ageRating = '18+',
+    requiresEntitlement = false,
+    priceUSDC,
+    priceFiat
 }) => {
     const [showDescription, setShowDescription] = useState(false);
     const [comments, setComments] = useState<Comment[]>([]);
@@ -206,15 +220,25 @@ export const YouTubeStyleVideoPlayer: React.FC<YouTubeStyleVideoPlayerProps> = (
                         <Icon name="x" size={24} className="text-white" />
                     </button>
 
-                    {/* Video Player */}
+                    {/* Video Player with Access Control */}
                     <div className="flex-1 flex items-center justify-center p-4">
-                        <div className="w-full max-w-6xl">
-                            <VideoPlayer
-                                src={videoSrc}
-                                title={videoData.title}
-                                autoPlay={true}
-                                className="w-full aspect-video"
-                            />
+                        <div className="w-full max-w-6xl relative">
+                            <PlayerGuard
+                                contentId={contentId}
+                                isAdultContent={isAdultContent}
+                                ageRating={ageRating}
+                                requiresEntitlement={requiresEntitlement}
+                                priceUSDC={priceUSDC}
+                                priceFiat={priceFiat}
+                            >
+                                <VideoPlayer
+                                    src={videoSrc}
+                                    title={videoData.title}
+                                    autoPlay={true}
+                                    className="w-full aspect-video"
+                                    enableWatermark={true}
+                                />
+                            </PlayerGuard>
                         </div>
                     </div>
 

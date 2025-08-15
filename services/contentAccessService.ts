@@ -1,50 +1,29 @@
 /**
- * Frontend Content Access Service
- * Handles content access control and playback authorization
+ * Content Access Service
+ * Handles content access verification including age, geo, and entitlement checks
  */
 
-export interface AccessCheckRequest {
+export interface ContentAccessResponse {
   contentId: string;
-  userAddress: string;
-  sessionId?: string;
-}
-
-export interface AccessCheckResult {
-  allowed: boolean;
-  reasons: AccessDenialReason[];
-  accessToken?: string;
+  ageOk: boolean;
+  geoOk: boolean;
+  hasEntitlement: boolean;
+  entitlementType?: 'free' | 'ppv' | 'subscription' | 'nft';
+  moderationStatus: 'approved' | 'pending' | 'blocked';
+  reason?: string;
   expiresAt?: string;
-  watermarkId?: string;
 }
 
-export interface AccessDenialReason {
-  type: 'age_verification' | 'geographic_restriction' | 'entitlement_required' | 'content_unavailable' | 'moderation_block';
-  message: string;
-  details?: any;
-}
-
-export interface PlaybackTokenRequest {
-  contentId: string;
-  userAddress: string;
-  accessToken: string;
-  sessionId?: string;
-}
-
-export interface PlaybackTokenResult {
+export interface PlaybackTokenResponse {
   hlsUrl: string;
   token: string;
-  watermarkId: string;
-  expiresAt: string;
-  sessionId?: string;
-}
-
-export interface ContentRequirements {
-  ageVerificationRequired: boolean;
-  geographicRestrictions: string[];
-  entitlementRequired: boolean;
-  entitlementType?: 'ppv' | 'subscription';
-  price?: string;
-  currency?: string;
+  overlayId: string;
+  expiresAt: number;
+  watermarkData?: {
+    sessionId: string;
+    userAddress: string;
+    contentId: string;
+  };
 }
 
 export class ContentAccessService {
@@ -63,322 +42,231 @@ export class ContentAccessService {
   }
 
   /**
-   * Check if user can access specific content
+   * Check if user has access to specific content
    */
-  async checkAccess(request: AccessCheckRequest): Promise<AccessCheckResult> {
+  async checkAccess(contentId: string, userAddress?: string): Promise<ContentAccessResponse> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/v1/content/${request.contentId}/access`, {
-        method: 'POST',
+      const url = new URL(`${this.baseUrl}/api/v1/content/access/${contentId}`);
+      if (userAddress) {
+        url.searchParams.set('address', userAddress);
+      }
+
+      const response = await fetch(url.toString(), {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          userAddress: request.userAddress,
-          sessionId: request.sessionId
-        }),
         credentials: 'include',
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Access check failed: ${response.statusText}`);
+        throw new Error(`Failed to check content access: ${response.statusText}`);
       }
 
       const data = await response.json();
       return data.data;
     } catch (error) {
       console.error('Error checking content access:', error);
-      throw error;
+      
+      // Return mock data for development/testing
+      if (import.meta.env.DEV) {
+        return this.getMockAccessResponse(contentId, userAddress);
+      }
+      
+      throw new Error('Failed to check content access');
     }
   }
 
   /**
-   * Get playback token for authorized content
+   * Request a playback token for authorized content
    */
-  async getPlaybackToken(request: PlaybackTokenRequest): Promise<PlaybackTokenResult> {
+  async requestPlaybackToken(contentId: string, userAddress: string): Promise<PlaybackTokenResponse> {
     try {
       const response = await fetch(`${this.baseUrl}/api/v1/content/playback-token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(request),
+        body: JSON.stringify({
+          contentId,
+          userAddress
+        }),
         credentials: 'include',
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || `Playback token request failed: ${response.statusText}`);
+        throw new Error(errorData.error || `Failed to get playback token: ${response.statusText}`);
       }
 
       const data = await response.json();
       return data.data;
     } catch (error) {
-      console.error('Error getting playback token:', error);
+      console.error('Error requesting playback token:', error);
+      
+      // Return mock data for development/testing
+      if (import.meta.env.DEV) {
+        return this.getMockPlaybackToken(contentId, userAddress);
+      }
+      
       throw error;
     }
   }
 
   /**
-   * Get content requirements (public endpoint)
+   * Validate a playback token
    */
-  async getContentRequirements(contentId: string): Promise<ContentRequirements> {
+  async validatePlaybackToken(token: string): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/v1/content/${contentId}/requirements`, {
+      const response = await fetch(`${this.baseUrl}/api/v1/content/validate-token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        credentials: 'include',
+      });
+
+      return response.ok;
+    } catch (error) {
+      console.error('Error validating playback token:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Report content access for analytics
+   */
+  async reportAccess(contentId: string, userAddress: string, accessType: 'view' | 'play' | 'complete'): Promise<void> {
+    try {
+      await fetch(`${this.baseUrl}/api/v1/content/analytics`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contentId,
+          userAddress,
+          accessType,
+          timestamp: new Date().toISOString()
+        }),
+        credentials: 'include',
+      });
+    } catch (error) {
+      console.error('Error reporting content access:', error);
+      // Don't throw - analytics failures shouldn't block content access
+    }
+  }
+
+  /**
+   * Get user's content library (owned/purchased content)
+   */
+  async getUserLibrary(userAddress: string): Promise<string[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/v1/content/library/${userAddress}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to get content requirements: ${response.statusText}`);
+        throw new Error(`Failed to get user library: ${response.statusText}`);
       }
 
       const data = await response.json();
-      return data.data;
+      return data.data.contentIds || [];
     } catch (error) {
-      console.error('Error getting content requirements:', error);
-      throw error;
+      console.error('Error getting user library:', error);
+      return [];
     }
   }
 
   /**
-   * Complete access flow: check access and get playback token if authorized
+   * Mock access response for development
    */
-  async getAuthorizedPlayback(
-    contentId: string,
-    userAddress: string,
-    sessionId?: string
-  ): Promise<{
-    success: boolean;
-    playbackData?: PlaybackTokenResult;
-    accessResult?: AccessCheckResult;
-  }> {
-    try {
-      // First check access
-      const accessResult = await this.checkAccess({
-        contentId,
-        userAddress,
-        sessionId
-      });
-
-      if (!accessResult.allowed) {
-        return {
-          success: false,
-          accessResult
-        };
-      }
-
-      // If access is allowed, get playback token
-      const playbackData = await this.getPlaybackToken({
-        contentId,
-        userAddress,
-        accessToken: accessResult.accessToken!,
-        sessionId
-      });
-
-      return {
-        success: true,
-        playbackData,
-        accessResult
-      };
-    } catch (error) {
-      console.error('Error getting authorized playback:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get user-friendly message for access denial reasons
-   */
-  getAccessDenialMessage(reasons: AccessDenialReason[]): string {
-    if (reasons.length === 0) {
-      return 'Access denied for unknown reason';
-    }
-
-    const primaryReason = reasons[0];
+  private getMockAccessResponse(contentId: string, userAddress?: string): ContentAccessResponse {
+    // Simulate different access scenarios based on contentId
+    const isAdultContent = contentId.includes('adult') || contentId.includes('18+');
+    const isPremiumContent = contentId.includes('premium') || contentId.includes('paid');
+    const isGeoRestricted = contentId.includes('geo-restricted');
     
-    switch (primaryReason.type) {
-      case 'age_verification':
-        return 'Age verification required. You must be 18+ to view this content.';
-      case 'geographic_restriction':
-        return 'This content is not available in your region.';
+    // Mock user verification status
+    const hasWallet = !!userAddress;
+    const isAgeVerified = hasWallet && Math.random() > 0.3; // 70% chance of being age verified
+    const hasEntitlement = hasWallet && (!isPremiumContent || Math.random() > 0.5); // 50% chance of having entitlement for premium content
+    
+    return {
+      contentId,
+      ageOk: !isAdultContent || isAgeVerified,
+      geoOk: !isGeoRestricted,
+      hasEntitlement: !isPremiumContent || hasEntitlement,
+      entitlementType: isPremiumContent ? (hasEntitlement ? 'ppv' : undefined) : 'free',
+      moderationStatus: 'approved',
+      reason: !hasWallet ? 'wallet_required' : 
+              (isAdultContent && !isAgeVerified) ? 'age_verification_required' :
+              (isPremiumContent && !hasEntitlement) ? 'entitlement_required' :
+              isGeoRestricted ? 'geo_restricted' : undefined
+    };
+  }
+
+  /**
+   * Mock playback token for development
+   */
+  private getMockPlaybackToken(contentId: string, userAddress: string): PlaybackTokenResponse {
+    const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const token = `mock_token_${sessionId}`;
+    
+    return {
+      hlsUrl: `https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4?token=${token}`,
+      token,
+      overlayId: `overlay_${sessionId}`,
+      expiresAt: Date.now() + (4 * 60 * 60 * 1000), // 4 hours from now
+      watermarkData: {
+        sessionId,
+        userAddress,
+        contentId
+      }
+    };
+  }
+
+  /**
+   * Get user-friendly access reason message
+   */
+  getAccessReasonMessage(reason?: string): string {
+    switch (reason) {
+      case 'wallet_required':
+        return 'Connect your wallet to access this content';
+      case 'age_verification_required':
+        return 'Age verification required for adult content';
       case 'entitlement_required':
-        const entitlementType = primaryReason.details?.entitlementType;
-        const price = primaryReason.details?.price;
-        if (entitlementType === 'ppv') {
-          return `Purchase required${price ? ` ($${price})` : ''} to view this content.`;
-        } else {
-          return 'Subscription required to view this content.';
-        }
-      case 'content_unavailable':
-        return 'This content is currently unavailable.';
-      case 'moderation_block':
-        return 'This content has been blocked by moderation.';
+        return 'Purchase required to access this premium content';
+      case 'geo_restricted':
+        return 'Content not available in your region';
+      case 'content_moderated':
+        return 'Content is under review or has been removed';
       default:
-        return primaryReason.message || 'Access denied';
+        return 'Access denied';
     }
   }
 
   /**
-   * Get suggested actions for access denial reasons
+   * Check if content requires payment
    */
-  getSuggestedActions(reasons: AccessDenialReason[]): Array<{
-    action: string;
-    label: string;
-    type: 'primary' | 'secondary';
-  }> {
-    const actions: Array<{ action: string; label: string; type: 'primary' | 'secondary' }> = [];
-
-    reasons.forEach(reason => {
-      switch (reason.type) {
-        case 'age_verification':
-          actions.push({
-            action: 'verify_age',
-            label: 'Verify Age',
-            type: 'primary'
-          });
-          break;
-        case 'entitlement_required':
-          const entitlementType = reason.details?.entitlementType;
-          if (entitlementType === 'ppv') {
-            actions.push({
-              action: 'purchase_content',
-              label: 'Purchase Content',
-              type: 'primary'
-            });
-          } else {
-            actions.push({
-              action: 'subscribe',
-              label: 'Subscribe',
-              type: 'primary'
-            });
-          }
-          break;
-        case 'geographic_restriction':
-          actions.push({
-            action: 'learn_more',
-            label: 'Learn More',
-            type: 'secondary'
-          });
-          break;
-      }
-    });
-
-    return actions;
+  isPaymentRequired(accessResponse: ContentAccessResponse): boolean {
+    return !accessResponse.hasEntitlement && 
+           accessResponse.ageOk && 
+           accessResponse.geoOk && 
+           accessResponse.moderationStatus === 'approved';
   }
 
   /**
-   * Check if user needs to take action before accessing content
+   * Check if content is completely blocked (not just payment required)
    */
-  async needsAction(contentId: string, userAddress: string): Promise<{
-    needsAction: boolean;
-    actions: string[];
-    requirements: ContentRequirements;
-  }> {
-    try {
-      const [accessResult, requirements] = await Promise.all([
-        this.checkAccess({ contentId, userAddress }),
-        this.getContentRequirements(contentId)
-      ]);
-
-      if (accessResult.allowed) {
-        return {
-          needsAction: false,
-          actions: [],
-          requirements
-        };
-      }
-
-      const actions = accessResult.reasons.map(reason => {
-        switch (reason.type) {
-          case 'age_verification':
-            return 'verify_age';
-          case 'entitlement_required':
-            return reason.details?.entitlementType === 'ppv' ? 'purchase' : 'subscribe';
-          default:
-            return 'unknown';
-        }
-      }).filter(action => action !== 'unknown');
-
-      return {
-        needsAction: true,
-        actions,
-        requirements
-      };
-    } catch (error) {
-      console.error('Error checking action needs:', error);
-      return {
-        needsAction: true,
-        actions: ['unknown'],
-        requirements: {
-          ageVerificationRequired: true,
-          geographicRestrictions: [],
-          entitlementRequired: true
-        }
-      };
-    }
-  }
-
-  /**
-   * Generate session ID for tracking
-   */
-  generateSessionId(): string {
-    return `session_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-  }
-
-  /**
-   * Parse watermark ID for display
-   */
-  parseWatermarkId(watermarkId: string): {
-    address: string;
-    session: string;
-    timestamp: number;
-  } | null {
-    try {
-      const decoded = JSON.parse(atob(watermarkId));
-      return {
-        address: decoded.address,
-        session: decoded.session,
-        timestamp: decoded.timestamp
-      };
-    } catch (error) {
-      console.error('Error parsing watermark ID:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Check if access token is still valid
-   */
-  isTokenValid(expiresAt: string): boolean {
-    return new Date() < new Date(expiresAt);
-  }
-
-  /**
-   * Get time remaining for access token
-   */
-  getTokenTimeRemaining(expiresAt: string): number {
-    const expiry = new Date(expiresAt);
-    const now = new Date();
-    return Math.max(0, expiry.getTime() - now.getTime());
-  }
-
-  /**
-   * Format time remaining in human readable format
-   */
-  formatTimeRemaining(milliseconds: number): string {
-    const seconds = Math.floor(milliseconds / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-
-    if (hours > 0) {
-      return `${hours}h ${minutes % 60}m`;
-    } else if (minutes > 0) {
-      return `${minutes}m ${seconds % 60}s`;
-    } else {
-      return `${seconds}s`;
-    }
+  isContentBlocked(accessResponse: ContentAccessResponse): boolean {
+    return !accessResponse.ageOk || 
+           !accessResponse.geoOk || 
+           accessResponse.moderationStatus === 'blocked';
   }
 }
