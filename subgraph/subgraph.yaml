@@ -1,0 +1,136 @@
+specVersion: 0.0.5
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: CreatorRegistry
+    network: polygon
+    source:
+      address: "0x0000000000000000000000000000000000000000" # Replace with deployed address
+      abi: CreatorRegistry
+      startBlock: 0 # Replace with deployment block
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Creator
+        - VerificationEvent
+      abis:
+        - name: CreatorRegistry
+          file: ./abis/CreatorRegistry.json
+      eventHandlers:
+        - event: CreatorRegistered(indexed address,uint256)
+          handler: handleCreatorRegistered
+        - event: VerificationStatusUpdated(indexed address,bool,bool)
+          handler: handleVerificationStatusUpdated
+        - event: EarningsUpdated(indexed address,uint256)
+          handler: handleEarningsUpdated
+      file: ./src/creator-registry.ts
+  
+  - kind: ethereum
+    name: ContentRegistry
+    network: polygon
+    source:
+      address: "0x0000000000000000000000000000000000000000" # Replace with deployed address
+      abi: ContentRegistry
+      startBlock: 0 # Replace with deployment block
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Content
+        - ModerationEvent
+      abis:
+        - name: ContentRegistry
+          file: ./abis/ContentRegistry.json
+      eventHandlers:
+        - event: ContentRegistered(indexed uint256,indexed address,string,bytes32,uint256,uint8,address,uint32)
+          handler: handleContentRegistered
+        - event: ModerationStatusUpdated(indexed uint256,uint8,address)
+          handler: handleModerationStatusUpdated
+        - event: ContentPriceUpdated(indexed uint256,uint256)
+          handler: handleContentPriceUpdated
+      file: ./src/content-registry.ts
+  
+  - kind: ethereum
+    name: NFTAccess
+    network: polygon
+    source:
+      address: "0x0000000000000000000000000000000000000000" # Replace with deployed address
+      abi: NFTAccess
+      startBlock: 0 # Replace with deployment block
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Entitlement
+        - AccessEvent
+      abis:
+        - name: NFTAccess
+          file: ./abis/NFTAccess.json
+      eventHandlers:
+        - event: TransferSingle(indexed address,indexed address,indexed address,uint256,uint256)
+          handler: handleTransferSingle
+        - event: TransferBatch(indexed address,indexed address,indexed address,uint256[],uint256[])
+          handler: handleTransferBatch
+        - event: AccessGranted(indexed address,indexed uint256,string,uint256)
+          handler: handleAccessGranted
+      file: ./src/nft-access.ts
+  
+  - kind: ethereum
+    name: RevenueSplitter
+    network: polygon
+    source:
+      address: "0x0000000000000000000000000000000000000000" # Replace with deployed address
+      abi: RevenueSplitter
+      startBlock: 0 # Replace with deployment block
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - RevenueSplit
+        - PaymentEvent
+      abis:
+        - name: RevenueSplitter
+          file: ./abis/RevenueSplitter.json
+      eventHandlers:
+        - event: SplitterCreated(indexed address,address[],uint32[])
+          handler: handleSplitterCreated
+        - event: PaymentReleased(indexed address,indexed address,uint256)
+          handler: handlePaymentReleased
+        - event: RevenueDistributed(indexed address,indexed uint256,uint256,uint256)
+          handler: handleRevenueDistributed
+      file: ./src/revenue-splitter.ts
+  
+  - kind: ethereum
+    name: OrganizationRegistry
+    network: polygon
+    source:
+      address: "0x0000000000000000000000000000000000000000" # Replace with deployed address
+      abi: OrganizationRegistry
+      startBlock: 0 # Replace with deployment block
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Organization
+        - OrgMember
+        - OrganizationEvent
+      abis:
+        - name: OrganizationRegistry
+          file: ./abis/OrganizationRegistry.json
+      eventHandlers:
+        - event: OrganizationCreated(indexed uint256,indexed address,string,uint8)
+          handler: handleOrganizationCreated
+        - event: MemberAdded(indexed uint256,indexed address,uint8,uint256)
+          handler: handleMemberAdded
+        - event: MemberRemoved(indexed uint256,indexed address)
+          handler: handleMemberRemoved
+        - event: MemberRoleUpdated(indexed uint256,indexed address,uint8)
+          handler: handleMemberRoleUpdated
+      file: ./src/organization-registry.ts

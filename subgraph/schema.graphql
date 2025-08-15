@@ -1,0 +1,145 @@
+type Creator @entity {
+  id: ID! # wallet address
+  wallet: Bytes!
+  ageVerified: Boolean!
+  talentVerified: Boolean!
+  totalEarnings: BigInt!
+  contentCount: Int!
+  organization: Organization
+  contents: [Content!]! @derivedFrom(field: "creator")
+  entitlements: [Entitlement!]! @derivedFrom(field: "user")
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+type Content @entity {
+  id: ID! # content ID
+  creator: Creator!
+  metaURI: String!
+  perceptualHash: Bytes!
+  priceUSDC: BigInt!
+  storageClass: Int! # 0: Shreddable, 1: Permanent
+  moderationStatus: Int! # 0: Pending, 1: Approved, 2: Rejected
+  splitter: Bytes!
+  geoMask: Int!
+  totalSales: BigInt!
+  viewCount: BigInt!
+  createdAt: BigInt!
+  updatedAt: BigInt!
+  entitlements: [Entitlement!]! @derivedFrom(field: "content")
+  moderationEvents: [ModerationEvent!]! @derivedFrom(field: "content")
+  revenueSplits: [RevenueSplit!]! @derivedFrom(field: "content")
+}
+
+type Entitlement @entity {
+  id: ID! # tokenId or user-content combination
+  user: Creator!
+  content: Content!
+  accessType: String! # 'ppv', 'subscription', 'free'
+  tokenId: BigInt!
+  amount: BigInt!
+  expiresAt: BigInt
+  purchasedAt: BigInt!
+  priceUSDC: BigInt!
+  isActive: Boolean!
+}
+
+type RevenueSplit @entity {
+  id: ID! # transaction hash + log index
+  splitter: Bytes!
+  content: Content
+  totalAmount: BigInt!
+  creatorAmount: BigInt!
+  platformAmount: BigInt!
+  recipients: [Bytes!]!
+  amounts: [BigInt!]!
+  timestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type Organization @entity {
+  id: ID! # organization ID
+  name: String!
+  owner: Creator!
+  orgType: Int! # 0: Individual, 1: Agency, 2: Studio
+  isActive: Boolean!
+  memberCount: Int!
+  totalContent: Int!
+  totalEarnings: BigInt!
+  createdAt: BigInt!
+  updatedAt: BigInt!
+  members: [OrgMember!]! @derivedFrom(field: "organization")
+}
+
+type OrgMember @entity {
+  id: ID! # orgId-wallet
+  organization: Organization!
+  member: Creator!
+  role: Int! # 0: Owner, 1: Manager, 2: Uploader, 3: Analyst
+  uploadQuota: BigInt!
+  isActive: Boolean!
+  joinedAt: BigInt!
+  updatedAt: BigInt!
+}
+
+type VerificationEvent @entity {
+  id: ID! # transaction hash + log index
+  creator: Creator!
+  ageVerified: Boolean!
+  talentVerified: Boolean!
+  timestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type ModerationEvent @entity {
+  id: ID! # transaction hash + log index
+  content: Content!
+  previousStatus: Int!
+  newStatus: Int!
+  moderator: Bytes!
+  timestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type AccessEvent @entity {
+  id: ID! # transaction hash + log index
+  user: Creator!
+  content: Content!
+  accessType: String!
+  expiresAt: BigInt
+  timestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type PaymentEvent @entity {
+  id: ID! # transaction hash + log index
+  from: Bytes!
+  to: Bytes!
+  amount: BigInt!
+  token: Bytes!
+  splitter: Bytes
+  timestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type OrganizationEvent @entity {
+  id: ID! # transaction hash + log index
+  organization: Organization!
+  eventType: String! # 'created', 'member_added', 'member_removed', 'role_updated'
+  member: Creator
+  oldRole: Int
+  newRole: Int
+  timestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+# Global platform statistics
+type PlatformStats @entity {
+  id: ID! # "platform"
+  totalCreators: Int!
+  totalContent: Int!
+  totalOrganizations: Int!
+  totalRevenue: BigInt!
+  totalEntitlements: Int!
+  lastUpdated: BigInt!
+}
