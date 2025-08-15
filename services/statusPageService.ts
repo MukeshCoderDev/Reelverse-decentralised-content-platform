@@ -1,51 +1,51 @@
-import Redis from 'ioredis';
+/**
+ * Public Status Page Service
+ * Provides public-facing status page with real-time metrics for agencies and investors
+ */
 
-export interface RealtimeMetrics {
-  timestamp: Date
-  playbackP95JoinTime: number
-  rebufferRatio: number
-  payoutP95Latency: number
-  checkoutSuccessRate: number
-  uptime: number
-  activeUsers: number
-  errorRate: number
-  aiTaggingAccuracy: number
-  leakDetectionRate: number
+import { MetricsCollectionService, SLOMetrics } from './metricsCollectionService';
+import { sloMonitoringService } from './sloMonitoringService';
+
+export interface PublicMetrics {
+  // Core Performance Metrics
+  playbackP95JoinTime: number;
+  rebufferRatio: number;
+  uptime: number;
+  errorRate: number;
+  
+  // Business Metrics (anonymized)
+  payoutReliability: number; // Success rate without exposing amounts
+  platformGrowth: {
+    activeCreators: number;
+    contentLibrarySize: number;
+    monthlyGrowthRate: number;
+  };
+  
+  // Service Health
+  serviceStatus: {
+    api: 'operational' | 'degraded' | 'outage';
+    video: 'operational' | 'degraded' | 'outage';
+    payments: 'operational' | 'degraded' | 'outage';
+    ai: 'operational' | 'degraded' | 'outage';
+  };
+  
+  // Credibility Indicators
+  credibilityScore: number; // 0-100 composite score
+  certifications: string[];
+  lastUpdated: Date;
 }
 
 export interface HistoricalMetrics {
-  date: Date
-  metrics: Omit<RealtimeMetrics, 'timestamp'>
+  date: string;
+  uptime: number;
+  avgJoinTime: number;
+  payoutReliability: number;
+  activeUsers: number;
 }
 
-export interface Incident {
-  id: string
-  title: string
-  description: string
-  status: 'investigating' | 'identified' | 'monitoring' | 'resolved'
-  severity: 'minor' | 'major' | 'critical'
-  startedAt: Date
-  resolvedAt?: Date
-  updates: IncidentUpdate[]
-  affectedServices: string[]
-}
-
-export interface IncidentUpdate {
-  id: string
-  message: string
-  timestamp: Date
-  status: Incident['status']
-}
-
-export interface ServiceStatus {
-  name: string
-  status: 'operational' | 'degraded' | 'partial_outage' | 'major_outage'
-  uptime: number
-  responseTime: number
-  lastChecked: Date
-}
-
-export interface SLOTarget {
+export interface ServiceIncident {
+  id: string;
+  title: striace SLOTarget {
   metric: string
   target: number
   current: number

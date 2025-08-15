@@ -8,6 +8,11 @@ import dotenv from 'dotenv';
 
 import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFoundHandler';
+import { 
+  unifiedErrorHandler, 
+  correlationIdMiddleware, 
+  idempotencyMiddleware 
+} from './middleware/unifiedErrorHandler';
 import { logger } from './utils/logger';
 import { connectDatabase } from './config/database';
 import { connectRedis } from './config/redis';
@@ -24,6 +29,15 @@ import moderationRoutes from './routes/moderation';
 import payoutRoutes from './routes/payout';
 import webhookRoutes from './routes/webhooks';
 import aiRoutes from './routes/ai';
+import creatorAIRoutes from './routes/creatorAI';
+import advancedSearchRoutes from './routes/advancedSearch';
+import agencyConciergeRoutes from './routes/agencyConcierge';
+import sloRoutes from './routes/slo';
+import statusRoutes from './routes/status';
+import enhancedFeatureFlagRoutes from '../routes/enhancedFeatureFlags';
+import privacyRoutes from './routes/privacy';
+import paymentComplianceRoutes from './routes/paymentCompliance';
+import aiGovernanceRoutes from './routes/aiGovernance';
 
 // Load environment variables
 dotenv.config();
@@ -70,6 +84,10 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 app.use(limiter);
+
+// Enhanced middleware
+app.use(correlationIdMiddleware);
+app.use(idempotencyMiddleware);
 
 // Body parsing middleware
 app.use(compression());
@@ -120,10 +138,19 @@ app.use(`/api/${API_VERSION}/moderation`, moderationRoutes);
 app.use(`/api/${API_VERSION}/payout`, payoutRoutes);
 app.use(`/api/${API_VERSION}/webhooks`, webhookRoutes);
 app.use(`/api/${API_VERSION}/ai`, aiRoutes);
+app.use(`/api/${API_VERSION}/creator-ai`, creatorAIRoutes);
+app.use(`/api/${API_VERSION}/advanced-search`, advancedSearchRoutes);
+app.use(`/api/${API_VERSION}/agency-concierge`, agencyConciergeRoutes);
+app.use(`/api/${API_VERSION}/slo`, sloRoutes);
+app.use(`/api/${API_VERSION}/status`, statusRoutes);
+app.use(`/api/${API_VERSION}/feature-flags`, enhancedFeatureFlagRoutes);
+app.use(`/api/${API_VERSION}/privacy`, privacyRoutes);
+app.use(`/api/${API_VERSION}/payment-compliance`, paymentComplianceRoutes);
+app.use(`/api/${API_VERSION}/ai-governance`, aiGovernanceRoutes);
 
 // Error handling middleware
 app.use(notFoundHandler);
-app.use(errorHandler);
+app.use(unifiedErrorHandler);
 
 // Graceful shutdown handling
 process.on('SIGTERM', async () => {
