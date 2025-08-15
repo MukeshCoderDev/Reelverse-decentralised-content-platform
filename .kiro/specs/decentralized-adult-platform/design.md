@@ -8,32 +8,43 @@ The enhanced architecture maintains the existing multi-layer approach while addi
 
 ## Architecture
 
-### Enhanced System Architecture (Building on Existing Foundation)
+### Enhanced System Architecture (Building on Existing Foundation + Agency Focus)
 
 ```mermaid
 graph TB
-    subgraph "Existing Frontend Layer (Enhanced)"
-        HEADER[Header.tsx + Verification Badges]
+    subgraph "Enhanced Frontend Layer (Agency-Ready)"
+        HEADER[Header.tsx + Agency Switcher + Verification Badges]
         WALLET[WalletButton.tsx + SIWE Integration]
         PLAYER[VideoPlayer.tsx + Watermarking]
         CARDS[ContentCard.tsx + Access Control]
-        STUDIO[Studio Pages + Web3 Features]
-        SIDEBAR[Sidebar.tsx + Web3 Navigation]
+        STUDIO[Studio Pages + Web3 + Agency Features]
+        SIDEBAR[Sidebar.tsx + Agency Navigation]
+        AGENCY_DASH[Agency Dashboard + Roster Management]
+        BULK_UPLOAD[Bulk Upload Interface]
+        MIGRATION[Migration Wizard]
+        COMPLIANCE[Compliance Center]
+        SCOREBOARD[Public Scoreboard]
     end
     
-    subgraph "New Web3 Service Layer"
+    subgraph "Enhanced Web3 Service Layer"
         SIWE[SIWE Auth Service]
         KYC[Age/KYC Service]
         BLOCKCHAIN[Blockchain Service]
         WATERMARK[Watermark Service]
         ENCRYPT[Encryption Service]
+        ORG_SERVICE[Organization Service]
+        PROMO_SERVICE[Promo Kit Service]
     end
     
     subgraph "Enhanced Backend Services"
         EXISTING_API[Existing API + Web3 Extensions]
-        UPLOAD_PIPELINE[Enhanced Upload Pipeline]
+        UPLOAD_PIPELINE[Enhanced Upload Pipeline + Bulk Support]
         PAYMENT_SERVICE[Enhanced Payment Service]
         CONTENT_SERVICE[Enhanced Content Service]
+        ORG_API[Organization Management API]
+        MIGRATION_API[Content Migration API]
+        COMPLIANCE_API[Compliance & Audit API]
+        METRICS_API[Public Metrics API]
     end
     
     subgraph "Blockchain Layer (Polygon PoS)"
@@ -46,13 +57,15 @@ graph TB
         GATE[Content Access Gate]
         UPL[Upload Manager]
         SBT[SBT Contracts]
+        ORG[Organization Registry]
     end
     
     subgraph "Enhanced Storage Layer"
         EXISTING_STORAGE[Existing Video Storage]
-        R2[R2/S3 + Encryption]
+        R2[R2/S3 + Encryption + Bulk Support]
         AR[Arweave Permanent]
         IPFS[IPFS Metadata]
+        SFTP[SFTP Watch Folders]
     end
     
     subgraph "External Services"
@@ -61,7 +74,21 @@ graph TB
         PAXUM[Paxum Payouts]
         LIVEPEER[Livepeer Transcode]
         GRAPH[The Graph Indexing]
+        FFMPEG[FFmpeg Promo Generation]
+        TUS[Tus Resumable Upload]
     end
+    
+    HEADER --> ORG_SERVICE
+    AGENCY_DASH --> ORG_API
+    BULK_UPLOAD --> TUS
+    MIGRATION --> MIGRATION_API
+    COMPLIANCE --> COMPLIANCE_API
+    SCOREBOARD --> METRICS_API
+    
+    ORG_SERVICE --> ORG
+    PROMO_SERVICE --> FFMPEG
+    UPLOAD_PIPELINE --> TUS
+    UPLOAD_PIPELINE --> SFTP
     
     HEADER --> SIWE
     WALLET --> BLOCKCHAIN
@@ -89,6 +116,7 @@ graph TB
     GRAPH --> CR
     GRAPH --> CONT
     GRAPH --> NFT
+    GRAPH --> ORG
 ```
 
 ### Enhanced Technology Stack (Building on Existing)
@@ -252,6 +280,38 @@ interface ISoulBoundTokens {
 }
 ```
 
+#### Agency-Focused Smart Contracts
+
+**OrganizationRegistry.sol**
+```solidity
+interface IOrganizationRegistry {
+    struct Organization {
+        string name;
+        address owner;
+        uint8 orgType; // 0: Individual, 1: Agency, 2: Studio
+        bool isActive;
+        uint256 createdAt;
+        uint256 memberCount;
+    }
+    
+    struct OrgMember {
+        address wallet;
+        uint8 role; // 0: Owner, 1: Manager, 2: Uploader, 3: Analyst
+        uint256 joinedAt;
+        uint256 uploadQuota;
+        bool isActive;
+    }
+    
+    function createOrganization(string calldata name, uint8 orgType) external returns (uint256 orgId);
+    function addMember(uint256 orgId, address member, uint8 role, uint256 quota) external;
+    function removeMember(uint256 orgId, address member) external;
+    function updateMemberRole(uint256 orgId, address member, uint8 newRole) external;
+    function getOrganization(uint256 orgId) external view returns (Organization memory);
+    function getMember(uint256 orgId, address member) external view returns (OrgMember memory);
+    function getOrgMembers(uint256 orgId) external view returns (address[] memory);
+}
+```
+
 ### Backend API Interfaces
 
 #### Authentication Service
@@ -267,6 +327,126 @@ interface AuthAPI {
   // Session Management
   GET /api/auth/session: () => { address?: string, verified: boolean }
   POST /api/auth/logout: () => { success: boolean }
+}
+```
+
+#### Organization Management API
+```typescript
+interface OrganizationAPI {
+  // Organization CRUD
+  POST /api/organizations: (name: string, type: 'agency' | 'studio' | 'individual') => { orgId: string }
+  GET /api/organizations/:orgId: () => Organization
+  PUT /api/organizations/:orgId: (updates: Partial<Organization>) => Organization
+  DELETE /api/organizations/:orgId: () => { success: boolean }
+  
+  // Member Management
+  POST /api/organizations/:orgId/invite: (email: string, role: OrgRole, quota?: number) => { inviteId: string }
+  POST /api/organizations/:orgId/members: (wallet: string, role: OrgRole) => OrgMember
+  PUT /api/organizations/:orgId/members/:wallet: (updates: Partial<OrgMember>) => OrgMember
+  DELETE /api/organizations/:orgId/members/:wallet: () => { success: boolean }
+  GET /api/organizations/:orgId/members: () => OrgMember[]
+  
+  // Analytics & Dashboard
+  GET /api/organizations/:orgId/analytics: (timeframe?: string) => OrgAnalytics
+  GET /api/organizations/:orgId/content: (filters?: ContentFilters) => ContentItem[]
+}
+```
+
+#### Bulk Upload API
+```typescript
+interface BulkUploadAPI {
+  // Resumable Upload
+  POST /api/upload/bulk/init: (fileCount: number, totalSize: number) => { batchId: string, uploadUrls: string[] }
+  POST /api/upload/bulk/:batchId/chunk: (chunkData: FormData, chunkIndex: number) => { success: boolean }
+  GET /api/upload/bulk/:batchId/status: () => { completed: number, total: number, failed: string[] }
+  POST /api/upload/bulk/:batchId/finalize: () => { contentIds: string[] }
+  
+  // SFTP Integration
+  POST /api/upload/sftp/watch: (folderPath: string, orgId: string) => { watchId: string }
+  GET /api/upload/sftp/:watchId/status: () => { processed: number, pending: number, errors: string[] }
+  
+  // S3/Wasabi Pull
+  POST /api/upload/s3/pull: (bucketConfig: S3Config, manifestPath: string) => { pullId: string }
+  GET /api/upload/s3/:pullId/status: () => { status: 'processing' | 'completed' | 'failed', progress: number }
+}
+```
+
+#### Migration API
+```typescript
+interface MigrationAPI {
+  // Content Import
+  POST /api/migration/import: (file: File, format: 'csv' | 'json') => { importId: string, preview: ContentPreview[] }
+  POST /api/migration/import/:importId/validate: () => { valid: ContentItem[], invalid: ValidationError[] }
+  POST /api/migration/import/:importId/process: (selectedIds: string[]) => { jobId: string }
+  GET /api/migration/import/:importId/status: () => { processed: number, total: number, errors: string[] }
+  
+  // Link-in-Bio Import
+  POST /api/migration/linkinbio: (url: string, platform: 'beacons' | 'linktree' | 'allmylinks') => { items: ContentItem[] }
+  
+  // Asset Upload
+  POST /api/migration/assets: (files: File[], contentId: string) => { assetIds: string[] }
+}
+```
+
+#### Promotional Content API
+```typescript
+interface PromoAPI {
+  // Auto-generation
+  POST /api/promo/generate: (contentId: string, options?: PromoOptions) => { jobId: string }
+  GET /api/promo/:jobId/status: () => { status: 'processing' | 'completed' | 'failed', progress: number }
+  GET /api/promo/:jobId/assets: () => { trailer: string, thumbnails: string[], socialPack: SocialAssets }
+  
+  // Social Sharing
+  POST /api/promo/share: (contentId: string, platforms: string[]) => { shareUrls: Record<string, string> }
+  GET /api/promo/share/:shareId/analytics: () => { clicks: number, conversions: number, platforms: Record<string, number> }
+}
+```
+
+#### Compliance API
+```typescript
+interface ComplianceAPI {
+  // 2257 Records
+  POST /api/compliance/2257: (contentId: string, records: Record2257[]) => { recordId: string }
+  GET /api/compliance/2257/:contentId: () => Record2257[]
+  
+  // Geo-blocking
+  PUT /api/compliance/geo/:contentId: (restrictions: GeoRestriction[]) => { success: boolean }
+  GET /api/compliance/geo/:contentId: () => GeoRestriction[]
+  
+  // Audit & Reports
+  GET /api/compliance/audit: (filters: AuditFilters) => AuditEntry[]
+  POST /api/compliance/report: (type: 'performer' | 'content' | 'organization', id: string) => { reportUrl: string }
+  
+  // DMCA & Takedowns
+  POST /api/compliance/dmca: (contentId: string, claimData: DMCAClaim) => { caseId: string }
+  POST /api/compliance/takedown/:contentId: (reason: string) => { success: boolean }
+}
+```
+
+#### Public Metrics API
+```typescript
+interface MetricsAPI {
+  // Public Scoreboard
+  GET /api/public/metrics: () => {
+    agencies: number,
+    creators: number,
+    videos: number,
+    storageGB: number,
+    uploadSuccessRate: number,
+    playbackP95: number,
+    uptime: number,
+    lastUpdated: string
+  }
+  
+  // Historical Data
+  GET /api/public/metrics/history: (timeframe: '7d' | '30d' | '90d') => MetricsHistory[]
+  
+  // Status Page
+  GET /api/public/status: () => {
+    services: ServiceStatus[],
+    incidents: Incident[],
+    uptime: UptimeStats
+  }
 }
 ```
 

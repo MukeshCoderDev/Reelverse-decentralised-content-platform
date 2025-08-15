@@ -230,7 +230,6 @@
 
 - [x] 25. Add payment options to existing content access flow
 
-
   - Create CheckoutModal using existing modal patterns and styling
   - Add USDC payment tab to existing payment interfaces
   - Integrate USDC permit-based purchasing with existing wallet functionality
@@ -239,7 +238,7 @@
   - Write tests for enhanced checkout flows
   - _Requirements: 5.1, 5.4, 6.2_
 
-- [ ] 26. Enhance existing studio verification page
+- [x] 26. Enhance existing studio verification page
 
   - Enhance existing StudioVerifyPage.tsx with KYC integration and status display
   - Add VerifiedTalentSBT minting interface to existing studio workflow
@@ -249,7 +248,7 @@
   - Write tests for enhanced creator verification UI
   - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 27. Enhance existing studio content upload
+- [x] 27. Enhance existing studio content upload
 
   - Enhance existing /studio/content page with Web3 upload options
   - Add storage class selection (shreddable vs permanent) to existing upload interface
@@ -259,7 +258,7 @@
   - Write tests for enhanced upload wizard flows
   - _Requirements: 4.1, 4.7, 13.1, 13.2_
 
-- [ ] 28. Add consent management to existing studio workflow
+- [x] 28. Add consent management to existing studio workflow
 
   - Create ConsentStepper component using existing studio styling and patterns
   - Add participant invitation and tracking to existing studio content creation flow
@@ -269,7 +268,7 @@
   - Write tests for consent management integration with existing UI
   - _Requirements: 8.1, 8.2, 8.3, 8.4_
 
-- [ ] 29. Enhance existing earnings and splits pages
+- [x] 29. Enhance existing earnings and splits pages
 
   - Add SplitEditor component to existing /studio/splits page with validation
   - Enhance existing /earnings page with blockchain balance display and instant USDC withdrawals
@@ -279,7 +278,8 @@
   - Write tests for enhanced financial management UI
   - _Requirements: 5.2, 12.1, 12.2, 12.4_
 
-- [ ] 30. Enhance existing studio moderation page
+- [x] 30. Enhance existing studio moderation page
+
   - Enhance existing /studio/moderation page with blockchain-based moderation queue
   - Add DMCA perceptual hash matching to existing content review interface
   - Integrate blockchain takedown actions with existing moderation decisions
@@ -342,3 +342,87 @@
   - Perform penetration testing on backend services
   - Create deployment and rollback procedures
   - _Requirements: All requirements for complete system validation_
+
+## Agency-Ready Platform Features (Core Business Focus)
+
+- [x] 37. Agency Organization Management System
+
+  - Create OrganizationRegistry smart contract for on-chain org management
+  - Build agency onboarding flow with organization setup and branding
+  - Implement role-based permissions system (Owner, Manager, Uploader, Analyst)
+  - Create magic link invitation system for team member onboarding
+  - Build agency dashboard with roster management and KYC status overview
+  - Add agency switcher button near wallet connection in Header component
+  - Implement upload quotas and permission enforcement per role
+  - Create organization analytics aggregation across all members
+  - Write comprehensive tests for organization management workflows
+  - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.5, 15.6_
+
+- [x] 38. Resumable Bulk Upload System
+
+  - Integrate Uppy + Tus for resumable upload functionality
+  - Enhance existing UploadWizard with bulk upload mode supporting 50+ files
+  - Implement chunked uploading with per-file and batch progress tracking
+  - Add automatic resume capability for network interruptions
+  - Create SFTP watch folder integration for automated ingestion
+  - Build S3/Wasabi pull functionality with JSON sidecar metadata
+  - Add upload validation and metadata verification before processing
+  - Enhance existing upload pipeline to handle batch processing
+  - Create bulk upload management interface in studio
+  - Write tests for resumable upload and batch processing scenarios
+  - _Requirements: 16.1, 16.2, 16.3, 16.4, 16.5, 16.6_
+
+- [x] 39. Content Migration and Import System
+
+  - Build CSV/JSON import functionality with PapaParse integration
+  - Create migration wizard interface with drag-and-drop asset support
+  - Implement link-in-bio parsing for Beacons/Linktree/AllMyLinks platforms
+  - Add content preview and validation before import processing
+  - Create category auto-mapping with manual override capabilities
+  - Build thumbnail and trailer import with automatic content matching
+  - Implement draft content creation for review before publishing
+  - Add import progress tracking and error handling
+  - Create migration analytics and success metrics
+  - Write tests for import validation and content migration workflows
+  - _Requirements: 17.1, 17.2, 17.3, 17.4, 17.5, 17.6_
+
+- [x] 40. Automated Promotional Content Generation
+
+  - Integrate FFmpeg for server-side video processing and trailer generation
+  - Build automated SFW trailer creation (30-60 second clips)
+  - Implement thumbnail generation with 6 different timestamp variations
+  - Create social media asset pack generation (Open Graph images, captions)
+  - Add one-click sharing integration for Twitter/X, Reddit, and Telegram
+  - Build promo kit processing queue with 2-minute completion target
+  - Create promo asset management interface in studio
+  - Implement fallback options for generation failures
+  - Add promo kit analytics and engagement tracking
+  - Write tests for automated content generation and social sharing
+  - _Requirements: 18.1, 18.2, 18.3, 18.4, 18.5, 18.6_
+
+- [x] 41. Comprehensive Compliance and Legal Management
+
+  - Enhance existing moderation system with 2257 record management
+  - Build performer age verification tracking and compliance dashboard
+  - Implement geo-blocking controls with Japan mosaic toggle
+  - Create comprehensive audit logging for all compliance actions
+  - Build DMCA takedown pipeline with key revocation capabilities
+  - Implement one-click compliance report generation (PDF export)
+  - Add compliance violation detection and automated flagging
+  - Create compliance officer role and permission management
+  - Build legal document storage and retrieval system
+  - Write tests for compliance workflows and audit trail generation
+  - _Requirements: 19.1, 19.2, 19.3, 19.4, 19.5, 19.6_
+
+- [x] 42. Public Metrics and Credibility Dashboard
+  - Create public scoreboard page with real-time platform metrics
+  - Implement automated metrics collection from database (hourly updates)
+  - Build performance indicators display (upload success rate, playback p95)
+  - Create platform health monitoring with uptime statistics
+  - Add historical trending data and growth metrics visualization
+  - Implement shareable public URL for investor and partner outreach
+  - Create status page with service health and incident reporting
+  - Build metrics API for external integrations and partnerships
+  - Add credibility indicators and trust signals for agencies
+  - Write tests for metrics collection and public dashboard functionality
+  - _Requirements: 20.1, 20.2, 20.3, 20.4, 20.5, 20.6_

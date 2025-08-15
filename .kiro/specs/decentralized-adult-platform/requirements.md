@@ -186,3 +186,81 @@ Reelverse18 transforms the existing Reelverse content platform into a decentrali
 4. WHEN emergency situation occurs THEN the system SHALL enhance existing admin controls with blockchain override capabilities and audit logging
 5. WHEN community votes through existing /dao interface THEN the system SHALL weight votes by stake and participation
 6. IF governance action fails THEN the system SHALL use existing error handling to revert changes and log failure reasons
+
+### Requirement 15: Agency Organization Management System
+
+**User Story:** As an agency owner, I want to create an organization account and manage my team of creators with role-based permissions, so that I can efficiently oversee multiple creators and their content from one centralized dashboard.
+
+#### Acceptance Criteria
+
+1. WHEN an agency owner creates an organization THEN the system SHALL provide organization setup with name, type, and initial settings
+2. WHEN inviting team members THEN the system SHALL send magic link invitations with role assignment (Owner, Manager, Uploader, Analyst)
+3. WHEN team members join THEN the system SHALL assign appropriate permissions and upload quotas based on their role
+4. WHEN viewing organization dashboard THEN the system SHALL display roster with KYC status, wallet connections, and upload quotas for all members
+5. WHEN managing creators THEN the system SHALL show aggregated analytics and content status across all organization members
+6. IF role permissions change THEN the system SHALL immediately update access controls and notify affected users
+
+### Requirement 16: Resumable Bulk Upload System
+
+**User Story:** As a studio manager, I want to upload large batches of content files that can resume automatically if interrupted, so that I can efficiently manage high-volume content uploads without losing progress.
+
+#### Acceptance Criteria
+
+1. WHEN initiating bulk upload THEN the system SHALL support folder selection with multiple video files up to 50 files per batch
+2. WHEN upload is in progress THEN the system SHALL use chunked uploading with progress tracking per file and overall batch
+3. WHEN network interruption occurs THEN the system SHALL pause uploads and automatically resume when connection is restored
+4. WHEN resuming uploads THEN the system SHALL continue from the last successful chunk without re-uploading completed portions
+5. WHEN upload completes THEN the system SHALL validate metadata and trigger processing pipeline for each file
+6. IF upload fails permanently THEN the system SHALL provide detailed error reporting and allow selective retry of failed files
+
+### Requirement 17: Content Migration and Import System
+
+**User Story:** As a creator switching platforms, I want to easily import my existing content catalog with metadata, so that I can quickly migrate to the platform without manually re-entering all content information.
+
+#### Acceptance Criteria
+
+1. WHEN importing content THEN the system SHALL support CSV/JSON file upload with content metadata (titles, descriptions, tags, categories)
+2. WHEN processing import file THEN the system SHALL validate data format and provide preview of items to be imported
+3. WHEN importing thumbnails THEN the system SHALL support drag-and-drop of image files with automatic matching to content items
+4. WHEN mapping categories THEN the system SHALL provide auto-mapping suggestions and manual override options
+5. WHEN import is processed THEN the system SHALL create draft content items that can be reviewed before publishing
+6. IF import contains errors THEN the system SHALL provide detailed validation feedback and allow correction before proceeding
+
+### Requirement 18: Automated Promotional Content Generation
+
+**User Story:** As a content creator, I want the system to automatically generate safe-for-work promotional materials after upload, so that I can quickly share and market my content across social platforms.
+
+#### Acceptance Criteria
+
+1. WHEN content upload completes THEN the system SHALL automatically generate a 30-60 second SFW trailer from the uploaded video
+2. WHEN processing promotional content THEN the system SHALL create 6 different thumbnail variations with different timestamps and compositions
+3. WHEN generating social assets THEN the system SHALL create shareable social media pack with Open Graph images, captions, and platform-specific links
+4. WHEN promotional kit is ready THEN the system SHALL provide one-click sharing options for Twitter/X, Reddit, and Telegram
+5. WHEN assets are generated THEN the system SHALL complete processing within 2 minutes of upload completion
+6. IF generation fails THEN the system SHALL provide fallback options and allow manual asset upload
+
+### Requirement 19: Comprehensive Compliance and Legal Management
+
+**User Story:** As an agency compliance officer, I want to track and manage all legal requirements per content asset, so that I can ensure regulatory compliance and generate audit reports for legal purposes.
+
+#### Acceptance Criteria
+
+1. WHEN uploading content THEN the system SHALL capture 2257 record references, performer age verification status, and compliance metadata
+2. WHEN setting content restrictions THEN the system SHALL provide geo-blocking controls and Japan mosaic toggle options
+3. WHEN managing compliance data THEN the system SHALL maintain audit log of all compliance-related actions with timestamps and responsible parties
+4. WHEN DMCA requests are received THEN the system SHALL provide takedown pipeline with key revocation and content blocking capabilities
+5. WHEN generating compliance reports THEN the system SHALL export comprehensive PDF reports for any asset or performer in one click
+6. IF compliance violations are detected THEN the system SHALL automatically flag content and notify compliance team
+
+### Requirement 20: Public Metrics and Credibility Dashboard
+
+**User Story:** As a platform stakeholder, I want to view real-time platform metrics and performance indicators, so that I can track growth, reliability, and share credibility with partners and investors.
+
+#### Acceptance Criteria
+
+1. WHEN accessing public scoreboard THEN the system SHALL display weekly updated metrics including agencies onboarded, creators registered, and videos uploaded
+2. WHEN viewing performance metrics THEN the system SHALL show technical indicators like GB encrypted, upload success rate, and playback start time p95
+3. WHEN checking platform health THEN the system SHALL display uptime statistics and system reliability metrics
+4. WHEN sharing metrics THEN the system SHALL provide shareable public URL that updates automatically from database
+5. WHEN metrics are updated THEN the system SHALL refresh data hourly and maintain historical trending data
+6. IF metrics collection fails THEN the system SHALL maintain service availability and log errors for investigation

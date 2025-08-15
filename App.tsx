@@ -3,6 +3,7 @@ import React from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { MobileLayout } from './components/mobile/MobileLayout';
 import { WalletProvider } from './contexts/WalletContext';
+import { OrganizationProvider } from './contexts/OrganizationContext';
 
 // Page Imports
 import HomePage from './pages/HomePage';
@@ -41,13 +42,15 @@ import LivePage from './pages/LivePage';
 import DaoPage from './pages/dao/DaoPage';
 import TreasuryPage from './pages/dao/TreasuryPage';
 import RewardsPage from './pages/RewardsPage';
+import AgencyDashboardPage from './pages/AgencyDashboardPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 const App: React.FC = () => {
   return (
     <WalletProvider>
-      <HashRouter>
-        <MobileLayout>
+      <OrganizationProvider>
+        <HashRouter>
+          <MobileLayout>
         <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/create" element={<CreatePage />} />
@@ -97,10 +100,14 @@ const App: React.FC = () => {
             <Route path="/dao/treasury" element={<TreasuryPage />} />
             <Route path="/rewards" element={<RewardsPage />} />
             
+            {/* Agency Routes */}
+            <Route path="/agency" element={<AgencyDashboardPage />} />
+            
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </MobileLayout>
       </HashRouter>
+      </OrganizationProvider>
     </WalletProvider>
   );
 };

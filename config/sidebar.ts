@@ -29,6 +29,7 @@ export const sidebar: readonly SidebarGroup[] = [
 
   { group: "Studio", role: "creator", items: [
     { id: "studio", label: "Dashboard", icon: "gauge", route: "/studio" },
+    { id: "agency", label: "Agency Dashboard", icon: "users", route: "/agency" },
     { id: "studio-content", label: "Content", icon: "film", route: "/studio/content" },
     { id: "studio-monetization", label: "Monetization", icon: "coins", route: "/studio/monetization" },
     { id: "studio-subs", label: "Subscriptions", icon: "ticket", route: "/studio/subscriptions" },

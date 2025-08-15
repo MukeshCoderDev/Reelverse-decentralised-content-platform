@@ -2,6 +2,7 @@ import React from 'react';
 import Button from './Button';
 import Icon from './Icon';
 import { WalletButton } from './wallet/WalletButton';
+import AgencySwitcher from './AgencySwitcher';
 import { useWallet } from '../contexts/WalletContext';
 
 interface HeaderProps {
@@ -11,32 +12,45 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ title }) => {
   const { isConnected, isAuthenticated, account } = useWallet();
   const [ageVerified, setAgeVerified] = React.useState(false);
+  const [talentVerified, setTalentVerified] = React.useState(false);
   const [isLoadingAge, setIsLoadingAge] = React.useState(false);
+  const [isLoadingTalent, setIsLoadingTalent] = React.useState(false);
 
-  // Load age verification status when account changes
+  // Load verification statuses when account changes
   React.useEffect(() => {
     if (isConnected && account) {
-      loadAgeVerificationStatus();
+      loadVerificationStatuses();
     } else {
       setAgeVerified(false);
+      setTalentVerified(false);
     }
   }, [isConnected, account]);
 
-  const loadAgeVerificationStatus = async () => {
+  const loadVerificationStatuses = async () => {
     if (!account) return;
 
     try {
+      // Load age verification status
       setIsLoadingAge(true);
-      // Import the service dynamically to avoid circular dependencies
       const { AgeVerificationService } = await import('../services/ageVerificationService');
       const ageVerificationService = AgeVerificationService.getInstance();
-      const status = await ageVerificationService.getVerificationStatus(account);
-      setAgeVerified(status.status === 'verified');
+      const ageStatus = await ageVerificationService.getVerificationStatus(account);
+      setAgeVerified(ageStatus.status === 'verified');
+
+      // Load talent verification status
+      setIsLoadingTalent(true);
+      // TODO: Replace with actual talent verification service call
+      // For now, mock the talent verification status
+      const mockTalentVerified = false; // This will be replaced with actual service call
+      setTalentVerified(mockTalentVerified);
+
     } catch (error) {
-      console.error('Failed to load age verification status:', error);
+      console.error('Failed to load verification statuses:', error);
       setAgeVerified(false);
+      setTalentVerified(false);
     } finally {
       setIsLoadingAge(false);
+      setIsLoadingTalent(false);
     }
   };
 
@@ -72,9 +86,29 @@ const Header: React.FC<HeaderProps> = ({ title }) => {
               </div>
             )}
             
-            {/* Placeholder for talent verification badge - will be implemented in task 26 */}
+            {/* Talent Verification Badge */}
+            {isLoadingTalent ? (
+              <div className="flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
+                <Icon name="loader" size={12} className="animate-spin" />
+                <span>Checking...</span>
+              </div>
+            ) : talentVerified ? (
+              <div className="flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+                <Icon name="star" size={12} />
+                <span>Verified Creator</span>
+              </div>
+            ) : ageVerified ? (
+              <div className="flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
+                <Icon name="star" size={12} />
+                <span>Unverified</span>
+              </div>
+            ) : null}
           </div>
         )}
+        
+        {/* Agency Switcher */}
+        <AgencySwitcher />
+        
         <WalletButton />
       </div>
     </header>
