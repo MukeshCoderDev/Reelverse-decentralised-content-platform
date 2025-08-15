@@ -61,3 +61,154 @@ export interface VideoShelf {
   shelfTitle: string;
   videos: Video[];
 }
+// Compliance types
+export interface ComplianceReport {
+  contentId: string;
+  riskScore: RiskScore;
+  violations: ComplianceViolation[];
+  recommendations: string[];
+  evidenceComplete: boolean;
+  consentValidation: ConsentValidation;
+  documents: ComplianceDocument[];
+  analyzedAt: Date;
+  nextReviewDate: Date;
+}
+
+export interface ConsentValidation {
+  contentId: string;
+  isValid: boolean;
+  anomalies: string[];
+  participantCount: number;
+  documentsFound: number;
+  validatedAt: Date;
+}
+
+export interface RiskScore {
+  overall: number;
+  breakdown: {
+    documentCompleteness: number;
+    consentValidity: number;
+    geoCompliance: number;
+    ageVerification: number;
+    contentRisk: number;
+  };
+  riskLevel: 'low' | 'medium' | 'high' | 'critical';
+  calculatedAt: Date;
+}
+
+export interface ComplianceViolation {
+  type: 'missing_document' | 'consent_anomaly' | 'expired_document' | 'geo_compliance';
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  description: string;
+  recommendation: string;
+  documentType?: string;
+}
+
+export interface ComplianceDocument {
+  type: '2257' | 'consent' | 'id_verification' | 'geo_compliance' | 'age_verification';
+  documentUrl: string;
+  hash: string;
+  verified: boolean;
+  uploadedAt: Date;
+  expiresAt?: Date;
+}
+
+export interface ContentMetadata {
+  duration: number;
+  participants?: Array<{
+    id: string;
+    name: string;
+    age: number;
+  }>;
+  location?: string;
+  uploadDate: string;
+  tags?: string[];
+  category?: string;
+}
+
+// Leak detection types
+export interface VideoFingerprint {
+  frameHashes: string[];
+  audioChroma: number[];
+  duration: number;
+  resolution: string;
+}
+
+export interface LeakMatch {
+  id: string;
+  contentId: string;
+  detectedUrl: string;
+  platform: string;
+  matchScore: number;
+  detectedAt: Date;
+  status: 'detected' | 'dmca_sent' | 'removed' | 'disputed';
+  evidence: LeakEvidence;
+}
+
+export interface LeakEvidence {
+  screenshots: string[];
+  fingerprintMatch: MatchResult;
+  metadata: PlatformMetadata;
+}
+
+export interface MatchResult {
+  similarity: number;
+  frameMatches: number;
+  audioMatch: number;
+  durationMatch: number;
+}
+
+export interface PlatformMetadata {
+  title: string;
+  duration: number;
+  uploadDate: Date;
+  platform: string;
+}
+
+export interface CrawlResult {
+  platform: string;
+  success: boolean;
+  videosFound: number;
+  crawledAt: Date;
+  videos?: any[];
+  error?: string;
+}
+
+// DMCA types
+export interface DMCANotice {
+  id: string;
+  leakId: string;
+  contentId: string;
+  platform: string;
+  targetUrl: string;
+  noticeText: string;
+  evidence: DMCAEvidence;
+  generatedAt: Date;
+  status: 'draft' | 'sent' | 'acknowledged' | 'removed' | 'disputed';
+  trackingInfo?: {
+    sentAt?: Date;
+    responseAt?: Date;
+    removalAt?: Date;
+  };
+}
+
+export interface DMCAEvidence {
+  screenshots: string[];
+  fingerprintData: any;
+  compliancePackUrl?: string;
+  originalContentProof: string;
+  copyrightOwnershipProof: string;
+}
+
+// Evidence Pack types
+export interface EvidencePack {
+  id: string;
+  contentId: string;
+  generatedAt: Date;
+  merkleHash: string;
+  documents: ComplianceDocument[];
+  riskAssessment: RiskScore;
+  validationResults: ConsentValidation[];
+  pdfPath: string;
+  blockchainTxHash?: string;
+}

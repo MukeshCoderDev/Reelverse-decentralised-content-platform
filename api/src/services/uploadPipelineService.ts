@@ -5,6 +5,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import axios from 'axios';
 import { logger } from '../utils/logger';
 import { RedisService } from '../config/redis';
+import { autoTaggingQueue, fingerprintingQueue, JobPriority, createJobOptions } from '../config/queues';
 
 // Contract ABIs
 const UPLOAD_MANAGER_ABI = [
@@ -216,7 +217,27 @@ export class UploadPipelineService {
         await this.applyWatermarking(transcodingResult);
       }
 
-      // Step 6: Compute perceptual hash
+      // Step 6: Generate AI tags and embeddings
+      await this.updateProgress(uploadId, {
+        uploadId,
+        status: 'hashing',
+        progress: 60,
+        currentStep: 'Generating AI tags and embeddings'
+      });
+
+      await this.queueAutoTagging(uploadId, transcodingResult.hlsUrl, request.metadata.tags);
+
+      // Step 7: Generate video fingerprint for leak detection
+      await this.updateProgress(uploadId, {
+        uploadId,
+        status: 'hashing',
+        progress: 65,
+        currentStep: 'Generating video fingerprint for leak detection'
+      });
+
+      await this.queueVideoFingerprinting(uploadId, transcodingResult.hlsUrl);
+
+      // Step 8: Compute perceptual hash
       await this.updateProgress(uploadId, {
         uploadId,
         status: 'hashing',
@@ -226,7 +247,7 @@ export class UploadPipelineService {
 
       const hashResult = await this.computePerceptualHash(transcodingResult.hlsUrl);
 
-      // Step 7: Create metadata and upload to IPFS
+      // Step 8: Create metadata and upload to IPFS
       await this.updateProgress(uploadId, {
         uploadId,
         status: 'registering',
@@ -236,7 +257,7 @@ export class UploadPipelineService {
 
       const metadataUri = await this.createAndUploadMetadata(request, transcodingResult, hashResult);
 
-      // Step 8: Finalize upload on blockchain
+      // Step 9: Finalize upload on blockchain
       await this.updateProgress(uploadId, {
         uploadId,
         status: 'registering',
@@ -250,7 +271,7 @@ export class UploadPipelineService {
         hashResult.hash
       );
 
-      // Step 9: Complete
+      // Step 10: Complete
       await this.updateProgress(uploadId, {
         uploadId,
         status: 'completed',
@@ -650,6 +671,55 @@ export class UploadPipelineService {
    */
   private generateUploadId(): string {
     return `upload_${Date.now()}_${crypto.randomBytes(8).toString('hex')}`;
+  }
+
+  /**
+   * Queue auto-tagging job for AI processing
+   */
+  private async queueAutoTagging(contentId: string, mediaUrl: string, existingTags: string[]): Promise<void> {
+    try {
+      await autoTaggingQueue.add(
+        'auto-tagging',
+        {
+          jobId: `autotag-${contentId}-${Date.now()}`,
+          contentId,
+          operation: 'auto-tagging',
+          priority: 'normal',
+          mediaUrl,
+          existingTags,
+        },
+        createJobOptions(JobPriority.NORMAL)
+      );
+
+      logger.info(`Auto-tagging job queued for content: ${contentId}`);
+    } catch (error) {
+      logger.error('Error queueing auto-tagging job:', error);
+      // Don't throw - auto-tagging failure shouldn't block upload
+    }
+  }
+
+  /**
+   * Queue video fingerprinting job for leak detection
+   */
+  private async queueVideoFingerprinting(contentId: string, videoUrl: string): Promise<void> {
+    try {
+      await fingerprintingQueue.add(
+        'fingerprinting',
+        {
+          jobId: `fingerprint-${contentId}-${Date.now()}`,
+          contentId,
+          operation: 'fingerprinting',
+          priority: 'normal',
+          videoUrl,
+        },
+        createJobOptions(JobPriority.NORMAL)
+      );
+
+      logger.info(`Video fingerprinting job queued for content: ${contentId}`);
+    } catch (error) {
+      logger.error('Error queueing video fingerprinting job:', error);
+      // Don't throw - fingerprinting failure shouldn't block upload
+    }
   }
 
   /**

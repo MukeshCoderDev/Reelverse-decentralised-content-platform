@@ -237,6 +237,8 @@ export const YouTubeStyleVideoPlayer: React.FC<YouTubeStyleVideoPlayerProps> = (
                                     autoPlay={true}
                                     className="w-full aspect-video"
                                     enableWatermark={true}
+                                    contentId={contentId}
+                                    enableMetrics={true}
                                 />
                             </PlayerGuard>
                         </div>

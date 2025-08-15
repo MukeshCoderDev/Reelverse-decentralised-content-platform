@@ -70,3 +70,94 @@ This specification defines AI-native differentiators that will boost discovery, 
 4. WHEN displaying metrics THEN the system SHALL update player beacons for start/rebuffer/error events in real-time
 5. WHEN agencies visit the status page THEN they SHALL see uptime statistics and operational transparency
 6. WHEN comparing to competitors THEN the metrics SHALL demonstrate professional-grade reliability and performance
+
+### Requirement 6: Privacy and Data Compliance Operations
+
+**User Story:** As a compliance officer, I want comprehensive privacy and data protection capabilities, so that we can meet GDPR, CCPA, and other regulatory requirements.
+
+#### Acceptance Criteria
+
+1. WHEN users request data export THEN the system SHALL generate complete data packages within 30 days
+2. WHEN users request data deletion THEN the system SHALL permanently remove PII while preserving anonymized analytics
+3. WHEN collecting personal data THEN the system SHALL obtain proper consent with granular opt-in/opt-out controls
+4. WHEN processing data THEN the system SHALL maintain audit logs of who accessed PII and when
+5. WHEN storing data THEN the system SHALL enforce retention policies and automatic deletion schedules
+6. WHEN handling cookies THEN the system SHALL provide compliant consent management
+
+### Requirement 7: Payments and Finance Operations Edge Cases
+
+**User Story:** As a finance operations manager, I want comprehensive payment edge case handling, so that we can operate globally with full compliance.
+
+#### Acceptance Criteria
+
+1. WHEN processing EU payments THEN the system SHALL handle 3DS/SCA authentication flows with fallback options
+2. WHEN completing purchases THEN the system SHALL generate proper receipts and invoices in PDF format
+3. WHEN onboarding creators THEN the system SHALL collect and store required tax forms (W-9/W-8BEN)
+4. WHEN operating in VAT/GST jurisdictions THEN the system SHALL calculate and collect appropriate taxes
+5. WHEN handling chargebacks THEN the system SHALL maintain dispute artifacts and evidence packages
+6. WHEN processing international payments THEN the system SHALL handle currency conversion and compliance
+
+### Requirement 8: AI Observability and Governance Operations
+
+**User Story:** As an AI operations manager, I want comprehensive AI model monitoring and governance, so that we can ensure quality and detect issues proactively.
+
+#### Acceptance Criteria
+
+1. WHEN deploying AI models THEN the system SHALL maintain version registry with A/B testing capabilities
+2. WHEN generating content THEN the system SHALL tag outputs with model versions for traceability
+3. WHEN monitoring embeddings THEN the system SHALL detect drift and alert on quality degradation
+4. WHEN reviewing AI decisions THEN the system SHALL provide abuse and false-positive review queues
+5. WHEN testing models THEN the system SHALL run red-team test suites in CI/CD pipeline
+6. WHEN operating AI systems THEN the system SHALL maintain governance metrics and compliance reports
+
+### Requirement 9: API and Partner Integration Readiness
+
+**User Story:** As a technical partner or agency, I want comprehensive API access and integration capabilities, so that I can build custom integrations and workflows.
+
+#### Acceptance Criteria
+
+1. WHEN accessing APIs THEN the system SHALL provide scoped API keys with read-only analytics access
+2. WHEN integrating systems THEN the system SHALL offer content search and entitlement verification APIs
+3. WHEN receiving events THEN the system SHALL provide webhook documentation and sample clients
+4. WHEN making requests THEN the system SHALL enforce rate limits with clear SLA documentation
+5. WHEN building integrations THEN the system SHALL provide comprehensive API documentation
+6. WHEN troubleshooting THEN the system SHALL provide request correlation IDs and error details
+
+### Requirement 10: Multi-CDN and Video Infrastructure Resilience
+
+**User Story:** As a platform operator, I want resilient video delivery infrastructure, so that we can maintain high availability and performance globally.
+
+#### Acceptance Criteria
+
+1. WHEN delivering video THEN the system SHALL use primary and backup CDN providers with automatic failover
+2. WHEN securing content THEN the system SHALL rotate signed URL keys regularly with zero downtime
+3. WHEN experiencing outages THEN the system SHALL execute origin failover procedures automatically
+4. WHEN operating globally THEN the system SHALL test regional blocklist compliance regularly
+5. WHEN monitoring delivery THEN the system SHALL track CDN performance and integrate with status page
+6. WHEN scaling THEN the system SHALL handle traffic spikes with multi-CDN load balancing
+
+### Requirement 11: Referral and Affiliate Growth Systems
+
+**User Story:** As a growth manager, I want comprehensive referral and affiliate systems, so that we can scale user acquisition through partners and creators.
+
+#### Acceptance Criteria
+
+1. WHEN creating referrals THEN the system SHALL generate unique codes and tracking links
+2. WHEN tracking attribution THEN the system SHALL maintain accurate referral source tracking
+3. WHEN processing payouts THEN the system SHALL calculate and distribute affiliate commissions
+4. WHEN managing partners THEN the system SHALL provide affiliate dashboard with performance metrics
+5. WHEN onboarding agencies THEN the system SHALL support revenue-share agreements and tracking
+6. WHEN analyzing growth THEN the system SHALL provide comprehensive attribution reporting
+
+### Requirement 12: Forensic Watermarking and Advanced Anti-Piracy
+
+**User Story:** As a content protection officer, I want advanced forensic watermarking capabilities, so that we can trace leaked content back to specific users and sessions.
+
+#### Acceptance Criteria
+
+1. WHEN playing premium content THEN the system SHALL embed invisible forensic watermarks with user/session data
+2. WHEN detecting leaks THEN the system SHALL extract forensic watermarks to identify source users
+3. WHEN investigating piracy THEN the system SHALL provide forensic analysis tools and reports
+4. WHEN processing evidence THEN the system SHALL integrate forensic data with DMCA and legal systems
+5. WHEN offering tiers THEN the system SHALL provide forensic watermarking as premium feature
+6. WHEN tracking leaks THEN the system SHALL maintain forensic watermark database for analysis

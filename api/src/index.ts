@@ -11,6 +11,7 @@ import { notFoundHandler } from './middleware/notFoundHandler';
 import { logger } from './utils/logger';
 import { connectDatabase } from './config/database';
 import { connectRedis } from './config/redis';
+import { aiServiceManager } from './services/ai/aiServiceManager';
 
 // Import routes
 import authRoutes from './routes/auth';
@@ -22,6 +23,7 @@ import consentRoutes from './routes/consentRoutes';
 import moderationRoutes from './routes/moderation';
 import payoutRoutes from './routes/payout';
 import webhookRoutes from './routes/webhooks';
+import aiRoutes from './routes/ai';
 
 // Load environment variables
 dotenv.config();
@@ -84,13 +86,27 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    version: process.env.npm_package_version || '1.0.0',
-    environment: process.env.NODE_ENV || 'development'
-  });
+app.get('/health', async (req, res) => {
+  try {
+    const aiHealth = await aiServiceManager.healthCheck();
+    
+    res.status(200).json({
+      status: aiHealth.status === 'healthy' ? 'healthy' : 'degraded',
+      timestamp: new Date().toISOString(),
+      version: process.env.npm_package_version || '1.0.0',
+      environment: process.env.NODE_ENV || 'development',
+      services: {
+        api: 'healthy',
+        ...aiHealth.services,
+      }
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      error: 'Health check failed',
+    });
+  }
 });
 
 // API routes
@@ -103,19 +119,22 @@ app.use(`/api/${API_VERSION}/consent`, consentRoutes);
 app.use(`/api/${API_VERSION}/moderation`, moderationRoutes);
 app.use(`/api/${API_VERSION}/payout`, payoutRoutes);
 app.use(`/api/${API_VERSION}/webhooks`, webhookRoutes);
+app.use(`/api/${API_VERSION}/ai`, aiRoutes);
 
 // Error handling middleware
 app.use(notFoundHandler);
 app.use(errorHandler);
 
 // Graceful shutdown handling
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   logger.info('SIGTERM received, shutting down gracefully');
+  await aiServiceManager.shutdown();
   process.exit(0);
 });
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   logger.info('SIGINT received, shutting down gracefully');
+  await aiServiceManager.shutdown();
   process.exit(0);
 });
 
@@ -129,6 +148,10 @@ async function startServer() {
     // Connect to Redis
     await connectRedis();
     logger.info('Redis connected successfully');
+
+    // Initialize AI services
+    await aiServiceManager.initialize();
+    logger.info('AI services initialized successfully');
 
     // Start HTTP server
     app.listen(PORT, () => {

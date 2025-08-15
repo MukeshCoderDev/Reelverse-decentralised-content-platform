@@ -32,7 +32,15 @@
     "axios": "^1.6.2",
     "winston": "^3.11.0",
     "joi": "^17.11.0",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "weaviate-ts-client": "^1.5.0",
+    "meilisearch": "^0.37.0",
+    "openai": "^4.20.1",
+    "@huggingface/inference": "^2.6.4",
+    "bull": "^4.12.2",
+    "sharp": "^0.32.6",
+    "fluent-ffmpeg": "^2.1.2",
+    "node-phash": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.9.0",
@@ -47,6 +55,7 @@
     "@types/uuid": "^9.0.7",
     "@types/jest": "^29.5.8",
     "@types/supertest": "^2.0.16",
+    "@types/fluent-ffmpeg": "^2.1.24",
     "supertest": "^6.3.3",
     "typescript": "^5.2.2",
     "nodemon": "^3.0.1",

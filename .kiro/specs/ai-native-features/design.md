@@ -333,15 +333,27 @@ interface PasskeyCredentials {
 - Compliance data encrypted at rest and in transit
 - Leak detection evidence stored with access controls
 - Metrics data anonymized for public display
+- GDPR/CCPA compliance with data export/deletion capabilities
+- PII access logging and audit trails
 
 ### AI Model Security
 - Input validation for all AI service calls
 - Rate limiting on expensive AI operations
 - Fallback mechanisms for AI service failures
 - Regular model performance monitoring
+- Model version registry and drift detection
+- Red-team testing in CI/CD pipeline
 
 ### Payment Security
 - Paymaster spending limits and monitoring
 - Passkey credential encryption and secure storage
 - Transaction replay protection
 - Multi-signature controls for high-value operations
+- 3DS/SCA compliance for EU payments
+- Chargeback dispute evidence management
+
+### Infrastructure Security
+- Multi-CDN failover and signed URL rotation
+- Regional compliance and blocklist testing
+- API rate limiting and correlation ID tracking
+- Forensic watermarking for premium content protection

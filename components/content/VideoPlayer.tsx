@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Icon from '../Icon';
 import { WatermarkService, WatermarkData, WatermarkPosition } from '../../services/watermarkService';
+import { usePlaybackMetrics } from '../../lib/hooks/usePlaybackMetrics';
 
 interface VideoPlayerProps {
     src: string;
@@ -14,6 +15,10 @@ interface VideoPlayerProps {
     // Watermarking props
     enableWatermark?: boolean;
     watermarkData?: WatermarkData;
+    // Metrics props
+    contentId?: string;
+    userId?: string;
+    enableMetrics?: boolean;
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -26,7 +31,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     onEnded,
     onError,
     enableWatermark = false,
-    watermarkData
+    watermarkData,
+    contentId = `content_${Date.now()}`,
+    userId,
+    enableMetrics = true
 }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -53,6 +61,19 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const watermarkService = WatermarkService.getInstance();
 
     const controlsTimeoutRef = useRef<NodeJS.Timeout>();
+
+    // Metrics tracking
+    const metrics = usePlaybackMetrics({
+        contentId,
+        userId,
+        autoStart: enableMetrics,
+        enableRealTimeTracking: enableMetrics
+    });
+
+    // Metrics tracking state
+    const loadStartTimeRef = useRef<number | null>(null);
+    const lastRebufferStartRef = useRef<number | null>(null);
+    const qualityRef = useRef<string>('auto');
 
     // Watermark movement effect
     useEffect(() => {
@@ -96,9 +117,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             setCurrentTime(time);
             
             // Update buffered progress
+            let bufferedPercentage = 0;
             if (video.buffered.length > 0) {
                 const bufferedEnd = video.buffered.end(video.buffered.length - 1);
-                setBuffered((bufferedEnd / video.duration) * 100);
+                bufferedPercentage = (bufferedEnd / video.duration) * 100;
+                setBuffered(bufferedPercentage);
             }
             
             // Update current chapter
@@ -108,6 +131,16 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             });
             if (chapterIndex !== -1) {
                 setCurrentChapter(chapterIndex);
+            }
+            
+            // Track video info for metrics (throttled)
+            if (enableMetrics && metrics.sessionId) {
+                metrics.trackVideoInfo(
+                    video.duration,
+                    time,
+                    bufferedPercentage,
+                    video.playbackRate
+                );
             }
             
             // Call external callback
@@ -131,26 +164,68 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             }
         };
 
-        const handlePlay = () => setIsPlaying(true);
-        const handlePause = () => setIsPlaying(false);
+        const handlePlay = () => {
+            setIsPlaying(true);
+            
+            // Track play event
+            if (enableMetrics && metrics.sessionId) {
+                metrics.trackEvent({ event: 'resume' });
+            }
+        };
+        
+        const handlePause = () => {
+            setIsPlaying(false);
+            
+            // Track pause event
+            if (enableMetrics && metrics.sessionId) {
+                metrics.trackEvent({ event: 'pause' });
+            }
+        };
         const handleVolumeChange = () => {
             setVolume(video.volume);
             setIsMuted(video.muted);
         };
 
-        const handleLoadStart = () => setIsLoading(true);
-        const handleCanPlay = () => setIsLoading(false);
+        const handleLoadStart = () => {
+            setIsLoading(true);
+            loadStartTimeRef.current = Date.now();
+        };
+        
+        const handleCanPlay = () => {
+            setIsLoading(false);
+            
+            // Calculate and track join time
+            if (enableMetrics && loadStartTimeRef.current && metrics.sessionId) {
+                const joinTime = Date.now() - loadStartTimeRef.current;
+                metrics.trackJoinTime(joinTime);
+                loadStartTimeRef.current = null;
+            }
+        };
         const handleError = (e: Event) => {
             console.error('Video error:', e);
-            setError('Failed to load video. Please try again.');
+            const errorMessage = 'Failed to load video. Please try again.';
+            setError(errorMessage);
             setIsLoading(false);
+            
+            // Track error event
+            if (enableMetrics && metrics.sessionId) {
+                const errorCode = (e.target as any)?.error?.code?.toString() || 'UNKNOWN';
+                metrics.trackError(errorCode, errorMessage);
+            }
+            
             if (onError) {
-                onError('Failed to load video');
+                onError(errorMessage);
             }
         };
 
         const handleEnded = () => {
             setIsPlaying(false);
+            
+            // Track end event
+            if (enableMetrics && metrics.sessionId) {
+                metrics.trackEvent({ event: 'end' });
+            }
+            
             if (onEnded) {
                 onEnded();
             }
@@ -158,6 +233,21 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
         const handleEnterpictureinpicture = () => setIsPictureInPicture(true);
         const handleLeavepictureinpicture = () => setIsPictureInPicture(false);
+
+        // Rebuffer detection
+        const handleWaiting = () => {
+            if (isPlaying && !isLoading) {
+                lastRebufferStartRef.current = Date.now();
+            }
+        };
+
+        const handlePlaying = () => {
+            if (lastRebufferStartRef.current && enableMetrics && metrics.sessionId) {
+                const rebufferDuration = Date.now() - lastRebufferStartRef.current;
+                metrics.trackRebuffer(rebufferDuration);
+                lastRebufferStartRef.current = null;
+            }
+        };
 
         // Add all event listeners
         video.addEventListener('timeupdate', handleTimeUpdate);
@@ -167,6 +257,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         video.addEventListener('volumechange', handleVolumeChange);
         video.addEventListener('loadstart', handleLoadStart);
         video.addEventListener('canplay', handleCanPlay);
+        video.addEventListener('playing', handlePlaying);
+        video.addEventListener('waiting', handleWaiting);
         video.addEventListener('error', handleError);
         video.addEventListener('ended', handleEnded);
         video.addEventListener('enterpictureinpicture', handleEnterpictureinpicture);
@@ -180,6 +272,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             video.removeEventListener('volumechange', handleVolumeChange);
             video.removeEventListener('loadstart', handleLoadStart);
             video.removeEventListener('canplay', handleCanPlay);
+            video.removeEventListener('playing', handlePlaying);
+            video.removeEventListener('waiting', handleWaiting);
             video.removeEventListener('error', handleError);
             video.removeEventListener('ended', handleEnded);
             video.removeEventListener('enterpictureinpicture', handleEnterpictureinpicture);
@@ -202,9 +296,15 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         const video = videoRef.current;
         if (!video) return;
 
+        const oldTime = currentTime;
         const newTime = parseFloat(e.target.value);
         video.currentTime = newTime;
         setCurrentTime(newTime);
+
+        // Track seek event
+        if (enableMetrics && metrics.sessionId) {
+            metrics.trackSeek(oldTime, newTime);
+        }
     };
 
     const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -248,6 +348,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         video.playbackRate = rate;
         setPlaybackRate(rate);
         setShowSettings(false);
+    };
+
+    const changeQuality = (newQuality: string) => {
+        const oldQuality = qualityRef.current;
+        qualityRef.current = newQuality;
+        setQuality(newQuality);
+        setShowSettings(false);
+
+        // Track quality change
+        if (enableMetrics && metrics.sessionId && oldQuality !== newQuality) {
+            metrics.trackQualityChange(newQuality);
+        }
     };
 
     const togglePictureInPicture = async () => {
@@ -576,7 +688,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                                     {['auto', '1080p', '720p', '480p'].map(q => (
                                         <button
                                             key={q}
-                                            onClick={() => setQuality(q)}
+                                            onClick={() => changeQuality(q)}
                                             className={`block w-full text-left px-2 py-1 text-sm hover:bg-white/20 rounded ${
                                                 quality === q ? 'text-red-500' : ''
                                             }`}
