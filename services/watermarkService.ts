@@ -1,267 +1,342 @@
-/**
- * Watermark Service
- * Handles dynamic watermark generation and positioning for video content
- */
+import { v4 as uuidv4 } from 'uuid';
 
-export interface WatermarkData {
-  userAddress: string;
+// Browser-compatible crypto utilities
+const createHash = (algorithm: string) => {
+  return {
+    update: (data: string) => ({
+      digest: (encoding: string) => {
+        // Use Web Crypto API for browser compatibility
+        const encoder = new TextEncoder();
+        const dataBuffer = encoder.encode(data);
+        return crypto.subtle.digest('SHA-256', dataBuffer).then(hashBuffer => {
+          const hashArray = Array.from(new Uint8Array(hashBuffer));
+          return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        });
+      }
+    })
+  };
+};
+
+export interface ForensicWatermark {
+  id: string;
+  userId: string;
   sessionId: string;
   contentId: string;
-  timestamp?: number;
+  timestamp: Date;
+  watermarkData: string;
+  extractionKey: string;
 }
 
-export interface WatermarkPosition {
-  x: number; // Percentage from left (0-100)
-  y: number; // Percentage from top (0-100)
+export interface WatermarkExtractionResult {
+  watermarkId: string;
+  userId: string;
+  sessionId: string;
+  contentId: string;
+  confidence: number;
+  extractedAt: Date;
 }
 
-export interface WatermarkConfig {
-  moveInterval: number; // Milliseconds between position changes
-  fadeTransition: number; // Milliseconds for fade transition
-  positions: WatermarkPosition[];
-  style: {
-    backgroundColor: string;
-    textColor: string;
-    fontSize: string;
-    padding: string;
-    borderRadius: string;
-    opacity: number;
-  };
+export interface WatermarkEmbedOptions {
+  strength: 'low' | 'medium' | 'high';
+  position: 'distributed' | 'corner' | 'center';
+  frequency: number; // frames per watermark
 }
 
 export class WatermarkService {
-  private static instance: WatermarkService;
-  private config: WatermarkConfig;
-
-  private constructor() {
-    this.config = {
-      moveInterval: 10000, // Move every 10 seconds
-      fadeTransition: 200, // 200ms fade
-      positions: [
-        { x: 10, y: 10 },   // Top-left
-        { x: 50, y: 10 },   // Top-center
-        { x: 90, y: 10 },   // Top-right
-        { x: 10, y: 30 },   // Upper-left
-        { x: 90, y: 30 },   // Upper-right
-        { x: 10, y: 50 },   // Middle-left
-        { x: 90, y: 50 },   // Middle-right
-        { x: 10, y: 70 },   // Lower-left
-        { x: 90, y: 70 },   // Lower-right
-        { x: 10, y: 90 },   // Bottom-left
-        { x: 50, y: 90 },   // Bottom-center
-        { x: 90, y: 90 }    // Bottom-right
-      ],
-      style: {
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
-        textColor: '#ffffff',
-        fontSize: '12px',
-        padding: '4px 8px',
-        borderRadius: '4px',
-        opacity: 0.8
-      }
-    };
-  }
-
-  public static getInstance(): WatermarkService {
-    if (!WatermarkService.instance) {
-      WatermarkService.instance = new WatermarkService();
-    }
-    return WatermarkService.instance;
-  }
+  private readonly watermarkDatabase = new Map<string, ForensicWatermark>();
+  private readonly extractionKeys = new Map<string, string>();
 
   /**
-   * Generate watermark text from data
+   * Generate forensic watermark for premium content
    */
-  generateWatermarkText(data: WatermarkData): string {
-    const parts = [];
+  async generateForensicWatermark(
+    userId: string,
+    sessionId: string,
+    contentId: string
+  ): Promise<ForensicWatermark> {
+    const watermarkId = uuidv4();
+    const timestamp = new Date();
     
-    // Format wallet address
-    if (data.userAddress) {
-      const addr = data.userAddress.toLowerCase();
-      parts.push(`${addr.slice(0, 6)}...${addr.slice(-4)}`);
-    }
-    
-    // Add session identifier
-    if (data.sessionId) {
-      parts.push(`S:${data.sessionId.slice(0, 8)}`);
-    }
-    
-    // Add content identifier
-    if (data.contentId) {
-      parts.push(`C:${data.contentId.slice(0, 6)}`);
-    }
-    
-    // Add timestamp
-    const timestamp = data.timestamp || Date.now();
-    const date = new Date(timestamp);
-    parts.push(date.toLocaleTimeString('en-US', { 
-      hour12: false, 
-      hour: '2-digit', 
-      minute: '2-digit',
-      second: '2-digit'
-    }));
-    
-    return parts.join(' • ');
-  }
-
-  /**
-   * Get next random position that's different from current
-   */
-  getNextPosition(currentPosition?: WatermarkPosition): WatermarkPosition {
-    const availablePositions = currentPosition 
-      ? this.config.positions.filter(pos => 
-          pos.x !== currentPosition.x || pos.y !== currentPosition.y
-        )
-      : this.config.positions;
-    
-    const randomIndex = Math.floor(Math.random() * availablePositions.length);
-    return availablePositions[randomIndex];
-  }
-
-  /**
-   * Create watermark session data
-   */
-  createSession(userAddress: string, contentId: string): WatermarkData {
-    return {
-      userAddress,
+    // Create unique watermark data combining user, session, and content info
+    const watermarkPayload = {
+      userId,
+      sessionId,
       contentId,
-      sessionId: this.generateSessionId(),
-      timestamp: Date.now()
+      timestamp: timestamp.toISOString(),
+      random: Math.random().toString(36)
     };
-  }
-
-  /**
-   * Generate unique session ID
-   */
-  private generateSessionId(): string {
-    const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substr(2, 9);
-    return `${timestamp}_${random}`;
-  }
-
-  /**
-   * Get watermark configuration
-   */
-  getConfig(): WatermarkConfig {
-    return { ...this.config };
-  }
-
-  /**
-   * Update watermark configuration
-   */
-  updateConfig(updates: Partial<WatermarkConfig>): void {
-    this.config = { ...this.config, ...updates };
-  }
-
-  /**
-   * Validate watermark data
-   */
-  validateWatermarkData(data: WatermarkData): boolean {
-    return !!(
-      data.userAddress && 
-      data.sessionId && 
-      data.contentId &&
-      data.userAddress.match(/^0x[a-fA-F0-9]{40}$/) // Valid Ethereum address
-    );
-  }
-
-  /**
-   * Generate CSS styles for watermark
-   */
-  generateWatermarkStyles(position: WatermarkPosition): React.CSSProperties {
-    return {
-      position: 'absolute',
-      left: `${position.x}%`,
-      top: `${position.y}%`,
-      transform: 'translate(-50%, -50%)',
-      backgroundColor: this.config.style.backgroundColor,
-      color: this.config.style.textColor,
-      fontSize: this.config.style.fontSize,
-      padding: this.config.style.padding,
-      borderRadius: this.config.style.borderRadius,
-      opacity: this.config.style.opacity,
-      fontFamily: 'monospace',
-      pointerEvents: 'none',
-      userSelect: 'none',
-      zIndex: 1000,
-      whiteSpace: 'nowrap',
-      border: '1px solid rgba(255, 255, 255, 0.2)',
-      backdropFilter: 'blur(2px)',
-      transition: `all ${this.config.fadeTransition}ms ease-in-out`
+    
+    const watermarkData = btoa(JSON.stringify(watermarkPayload));
+    const extractionKey = await this.generateExtractionKey(watermarkId, userId);
+    
+    const watermark: ForensicWatermark = {
+      id: watermarkId,
+      userId,
+      sessionId,
+      contentId,
+      timestamp,
+      watermarkData,
+      extractionKey
     };
+    
+    // Store watermark in database
+    this.watermarkDatabase.set(watermarkId, watermark);
+    this.extractionKeys.set(watermarkId, extractionKey);
+    
+    return watermark;
   }
 
   /**
-   * Check if watermark should be visible based on video state
+   * Embed invisible watermark into video stream
    */
-  shouldShowWatermark(isPlaying: boolean, hasError: boolean, isLoading: boolean): boolean {
-    return isPlaying && !hasError && !isLoading;
-  }
-
-  /**
-   * Generate anti-tampering hash for watermark verification
-   */
-  generateVerificationHash(data: WatermarkData): string {
-    const payload = `${data.userAddress}:${data.sessionId}:${data.contentId}:${data.timestamp}`;
-    // In a real implementation, this would use a proper cryptographic hash
-    // For now, we'll use a simple hash for demonstration
-    let hash = 0;
-    for (let i = 0; i < payload.length; i++) {
-      const char = payload.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
+  async embedWatermarkInVideo(
+    videoUrl: string,
+    watermark: ForensicWatermark,
+    options: WatermarkEmbedOptions = {
+      strength: 'medium',
+      position: 'distributed',
+      frequency: 30 // every 30 frames
     }
-    return Math.abs(hash).toString(16);
+  ): Promise<string> {
+    try {
+      // In a real implementation, this would use FFmpeg with steganography
+      // For now, we'll simulate the watermarking process
+      
+      const watermarkedUrl = await this.processVideoWithWatermark(
+        videoUrl,
+        watermark.watermarkData,
+        options
+      );
+      
+      console.log(`Embedded forensic watermark ${watermark.id} in video ${videoUrl}`);
+      return watermarkedUrl;
+      
+    } catch (error) {
+      console.error('Failed to embed watermark:', error);
+      throw new Error(`Watermark embedding failed: ${error.message}`);
+    }
   }
 
   /**
-   * Create watermark for Picture-in-Picture mode
+   * Extract forensic watermark from suspected leaked content
    */
-  createPiPWatermark(data: WatermarkData): string {
-    return data.userAddress ? 
-      `${data.userAddress.slice(0, 6)}...${data.userAddress.slice(-4)}` : 
-      'Protected Content';
+  async extractWatermarkFromVideo(
+    suspectedLeakUrl: string
+  ): Promise<WatermarkExtractionResult | null> {
+    try {
+      // In a real implementation, this would analyze video frames for watermark patterns
+      const extractedData = await this.analyzeVideoForWatermarks(suspectedLeakUrl);
+      
+      if (!extractedData) {
+        return null;
+      }
+      
+      // Decode watermark data
+      const watermarkPayload = JSON.parse(atob(extractedData.watermarkData));
+      
+      // Verify watermark authenticity
+      const isValid = await this.verifyWatermarkAuthenticity(
+        extractedData.watermarkId,
+        extractedData.extractionKey
+      );
+      
+      if (!isValid) {
+        console.warn(`Invalid watermark detected: ${extractedData.watermarkId}`);
+        return null;
+      }
+      
+      return {
+        watermarkId: extractedData.watermarkId,
+        userId: watermarkPayload.userId,
+        sessionId: watermarkPayload.sessionId,
+        contentId: watermarkPayload.contentId,
+        confidence: extractedData.confidence,
+        extractedAt: new Date()
+      };
+      
+    } catch (error) {
+      console.error('Failed to extract watermark:', error);
+      return null;
+    }
   }
 
   /**
-   * Log watermark display for audit trail
+   * Create forensic investigation report
    */
-  logWatermarkDisplay(data: WatermarkData, position: WatermarkPosition): void {
-    if (import.meta.env.DEV) {
-      console.log('Watermark displayed:', {
-        user: data.userAddress,
-        session: data.sessionId,
-        content: data.contentId,
-        position,
-        timestamp: new Date().toISOString()
-      });
+  async generateForensicReport(
+    extractionResult: WatermarkExtractionResult,
+    leakUrl: string
+  ): Promise<ForensicInvestigationReport> {
+    const originalWatermark = this.watermarkDatabase.get(extractionResult.watermarkId);
+    
+    if (!originalWatermark) {
+      throw new Error(`Original watermark not found: ${extractionResult.watermarkId}`);
     }
     
-    // In production, this would send to analytics/audit service
-    this.sendAuditLog({
-      type: 'watermark_display',
-      data,
-      position,
-      timestamp: Date.now()
-    });
+    const report: ForensicInvestigationReport = {
+      id: uuidv4(),
+      watermarkId: extractionResult.watermarkId,
+      leakUrl,
+      sourceUserId: extractionResult.userId,
+      sourceSessionId: extractionResult.sessionId,
+      contentId: extractionResult.contentId,
+      originalTimestamp: originalWatermark.timestamp,
+      extractionTimestamp: extractionResult.extractedAt,
+      confidence: extractionResult.confidence,
+      evidenceHash: await this.generateEvidenceHash(extractionResult, leakUrl),
+      investigationStatus: 'pending_review',
+      createdAt: new Date()
+    };
+    
+    return report;
   }
 
   /**
-   * Send audit log (placeholder for real implementation)
+   * Get forensic watermark database for leak source analysis
    */
-  private async sendAuditLog(logData: any): Promise<void> {
-    try {
-      // In production, send to audit service
-      if (!import.meta.env.DEV) {
-        await fetch('/api/v1/audit/watermark', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(logData),
-          credentials: 'include'
-        });
+  async getWatermarkAnalytics(contentId?: string): Promise<WatermarkAnalytics> {
+    const allWatermarks = Array.from(this.watermarkDatabase.values());
+    const filteredWatermarks = contentId 
+      ? allWatermarks.filter(w => w.contentId === contentId)
+      : allWatermarks;
+    
+    const userDistribution = this.calculateUserDistribution(filteredWatermarks);
+    const timeDistribution = this.calculateTimeDistribution(filteredWatermarks);
+    
+    return {
+      totalWatermarks: filteredWatermarks.length,
+      uniqueUsers: new Set(filteredWatermarks.map(w => w.userId)).size,
+      uniqueSessions: new Set(filteredWatermarks.map(w => w.sessionId)).size,
+      userDistribution,
+      timeDistribution,
+      contentId
+    };
+  }
+
+  private async generateExtractionKey(watermarkId: string, userId: string): Promise<string> {
+    const data = `${watermarkId}:${userId}:${import.meta.env.VITE_WATERMARK_SECRET || 'default-secret'}`;
+    const encoder = new TextEncoder();
+    const dataBuffer = encoder.encode(data);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  private async processVideoWithWatermark(
+    videoUrl: string,
+    watermarkData: string,
+    options: WatermarkEmbedOptions
+  ): Promise<string> {
+    // Simulate FFmpeg watermarking process
+    // In production, this would use actual video processing
+    
+    const watermarkedFilename = `watermarked_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.mp4`;
+    
+    // Simulate processing time
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    return `${import.meta.env.VITE_CDN_BASE_URL || '/api'}/watermarked/${watermarkedFilename}`;
+  }
+
+  private async analyzeVideoForWatermarks(videoUrl: string): Promise<{
+    watermarkId: string;
+    watermarkData: string;
+    extractionKey: string;
+    confidence: number;
+  } | null> {
+    // Simulate watermark extraction analysis
+    // In production, this would analyze video frames for steganographic patterns
+    
+    // For demo purposes, simulate finding a watermark 70% of the time
+    if (Math.random() < 0.7) {
+      const mockWatermarks = Array.from(this.watermarkDatabase.values());
+      if (mockWatermarks.length > 0) {
+        const randomWatermark = mockWatermarks[Math.floor(Math.random() * mockWatermarks.length)];
+        return {
+          watermarkId: randomWatermark.id,
+          watermarkData: randomWatermark.watermarkData,
+          extractionKey: randomWatermark.extractionKey,
+          confidence: 0.85 + Math.random() * 0.1 // 85-95% confidence
+        };
       }
-    } catch (error) {
-      console.error('Failed to send watermark audit log:', error);
     }
+    
+    return null;
+  }
+
+  private async verifyWatermarkAuthenticity(
+    watermarkId: string,
+    extractionKey: string
+  ): Promise<boolean> {
+    const storedKey = this.extractionKeys.get(watermarkId);
+    return storedKey === extractionKey;
+  }
+
+  private async generateEvidenceHash(
+    extractionResult: WatermarkExtractionResult,
+    leakUrl: string
+  ): Promise<string> {
+    const evidenceData = {
+      watermarkId: extractionResult.watermarkId,
+      userId: extractionResult.userId,
+      sessionId: extractionResult.sessionId,
+      contentId: extractionResult.contentId,
+      leakUrl,
+      extractedAt: extractionResult.extractedAt.toISOString()
+    };
+    
+    const encoder = new TextEncoder();
+    const dataBuffer = encoder.encode(JSON.stringify(evidenceData));
+    const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  private calculateUserDistribution(watermarks: ForensicWatermark[]): Record<string, number> {
+    const distribution: Record<string, number> = {};
+    
+    watermarks.forEach(watermark => {
+      distribution[watermark.userId] = (distribution[watermark.userId] || 0) + 1;
+    });
+    
+    return distribution;
+  }
+
+  private calculateTimeDistribution(watermarks: ForensicWatermark[]): Record<string, number> {
+    const distribution: Record<string, number> = {};
+    
+    watermarks.forEach(watermark => {
+      const hour = watermark.timestamp.getHours();
+      const timeSlot = `${hour}:00-${hour + 1}:00`;
+      distribution[timeSlot] = (distribution[timeSlot] || 0) + 1;
+    });
+    
+    return distribution;
   }
 }
+
+export interface ForensicInvestigationReport {
+  id: string;
+  watermarkId: string;
+  leakUrl: string;
+  sourceUserId: string;
+  sourceSessionId: string;
+  contentId: string;
+  originalTimestamp: Date;
+  extractionTimestamp: Date;
+  confidence: number;
+  evidenceHash: string;
+  investigationStatus: 'pending_review' | 'confirmed_leak' | 'false_positive' | 'legal_action';
+  createdAt: Date;
+}
+
+export interface WatermarkAnalytics {
+  totalWatermarks: number;
+  uniqueUsers: number;
+  uniqueSessions: number;
+  userDistribution: Record<string, number>;
+  timeDistribution: Record<string, number>;
+  contentId?: string;
+}
+
+export const watermarkService = new WatermarkService();

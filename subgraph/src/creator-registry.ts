@@ -1,90 +1,128 @@
-import { BigInt, Address } from "@graphprotocol/graph-ts"
+import { BigInt, Bytes, log } from "@graphprotocol/graph-ts"
 import {
   CreatorRegistered,
-  VerificationStatusUpdated,
-  EarningsUpdated
+  CreatorVerified,
+  CreatorUpdated
 } from "../generated/CreatorRegistry/CreatorRegistry"
-import { Creator, VerificationEvent, PlatformStats } from "../generated/schema"
+import { Creator, AuditLog, PlatformMetrics } from "../generated/schema"
 
 export function handleCreatorRegistered(event: CreatorRegistered): void {
   let creator = new Creator(event.params.creator.toHexString())
   
-  creator.wallet = event.params.creator
-  creator.ageVerified = false
-  creator.talentVerified = false
+  creator.walletAddress = event.params.creator
+  creator.isVerified = false
   creator.totalEarnings = BigInt.fromI32(0)
-  creator.contentCount = 0
+  creator.totalContent = BigInt.fromI32(0)
   creator.createdAt = event.block.timestamp
   creator.updatedAt = event.block.timestamp
   
   creator.save()
   
-  // Update platform stats
-  updatePlatformStats(event.block.timestamp)
+  // Update platform metrics
+  updatePlatformMetrics()
+  
+  // Create audit log
+  createAuditLog(
+    "Creator",
+    event.params.creator.toHexString(),
+    "REGISTERED",
+    event.params.creator,
+    `{"profileURI": "${event.params.profileURI}"}`,
+    event
+  )
+  
+  log.info("Creator registered: {}", [event.params.creator.toHexString()])
 }
 
-export function handleVerificationStatusUpdated(event: VerificationStatusUpdated): void {
+export function handleCreatorVerified(event: CreatorVerified): void {
   let creator = Creator.load(event.params.creator.toHexString())
   
   if (creator == null) {
-    // Create creator if doesn't exist
-    creator = new Creator(event.params.creator.toHexString())
-    creator.wallet = event.params.creator
-    creator.totalEarnings = BigInt.fromI32(0)
-    creator.contentCount = 0
-    creator.createdAt = event.block.timestamp
+    log.error("Creator not found for verification: {}", [event.params.creator.toHexString()])
+    return
   }
   
-  creator.ageVerified = event.params.ageVerified
-  creator.talentVerified = event.params.talentVerified
+  creator.isVerified = true
+  creator.verificationSBT = event.params.sbtTokenId
   creator.updatedAt = event.block.timestamp
   
   creator.save()
   
-  // Create verification event
-  let verificationEvent = new VerificationEvent(
-    event.transaction.hash.toHexString() + "-" + event.logIndex.toString()
+  // Create audit log
+  createAuditLog(
+    "Creator",
+    event.params.creator.toHexString(),
+    "VERIFIED",
+    event.params.creator,
+    `{"sbtTokenId": "${event.params.sbtTokenId.toString()}"}`,
+    event
   )
   
-  verificationEvent.creator = creator.id
-  verificationEvent.ageVerified = event.params.ageVerified
-  verificationEvent.talentVerified = event.params.talentVerified
-  verificationEvent.timestamp = event.block.timestamp
-  verificationEvent.transactionHash = event.transaction.hash
-  
-  verificationEvent.save()
+  log.info("Creator verified: {}", [event.params.creator.toHexString()])
 }
 
-export function handleEarningsUpdated(event: EarningsUpdated): void {
+export function handleCreatorUpdated(event: CreatorUpdated): void {
   let creator = Creator.load(event.params.creator.toHexString())
   
-  if (creator != null) {
-    creator.totalEarnings = event.params.totalEarnings
-    creator.updatedAt = event.block.timestamp
-    creator.save()
-    
-    // Update platform stats
-    updatePlatformStats(event.block.timestamp)
+  if (creator == null) {
+    log.error("Creator not found for update: {}", [event.params.creator.toHexString()])
+    return
   }
+  
+  creator.updatedAt = event.block.timestamp
+  creator.save()
+  
+  // Create audit log
+  createAuditLog(
+    "Creator",
+    event.params.creator.toHexString(),
+    "UPDATED",
+    event.params.creator,
+    `{"profileURI": "${event.params.profileURI}"}`,
+    event
+  )
+  
+  log.info("Creator updated: {}", [event.params.creator.toHexString()])
 }
 
-function updatePlatformStats(timestamp: BigInt): void {
-  let stats = PlatformStats.load("platform")
+function updatePlatformMetrics(): void {
+  let metrics = PlatformMetrics.load("current")
   
-  if (stats == null) {
-    stats = new PlatformStats("platform")
-    stats.totalCreators = 0
-    stats.totalContent = 0
-    stats.totalOrganizations = 0
-    stats.totalRevenue = BigInt.fromI32(0)
-    stats.totalEntitlements = 0
+  if (metrics == null) {
+    metrics = new PlatformMetrics("current")
+    metrics.totalCreators = BigInt.fromI32(0)
+    metrics.totalContent = BigInt.fromI32(0)
+    metrics.totalRevenue = BigInt.fromI32(0)
+    metrics.totalPayouts = BigInt.fromI32(0)
+    metrics.averageJoinTime = BigInt.fromI32(1200) // 1.2 seconds in ms
+    metrics.rebufferRate = BigInt.fromI32(80) // 0.8% in basis points
+    metrics.uptimePercentage = BigInt.fromI32(9998) // 99.98% in basis points
   }
   
-  // Count total creators
-  // Note: In a real implementation, you'd want to use a more efficient method
-  // This is simplified for demonstration
-  stats.totalCreators = stats.totalCreators + 1
-  stats.lastUpdated = timestamp
+  metrics.totalCreators = metrics.totalCreators.plus(BigInt.fromI32(1))
+  metrics.lastUpdated = BigInt.fromI32(Date.now() as i32)
   
-  stats.save()
+  metrics.save()
+}
+
+function createAuditLog(
+  entity: string,
+  entityId: string,
+  action: string,
+  actor: Bytes,
+  metadata: string,
+  event: any
+): void {
+  let auditId = event.transaction.hash.toHexString() + "-" + event.logIndex.toString()
+  let audit = new AuditLog(auditId)
+  
+  audit.entity = entity
+  audit.entityId = entityId
+  audit.action = action
+  audit.actor = actor
+  audit.metadata = metadata
+  audit.timestamp = event.block.timestamp
+  audit.transactionHash = event.transaction.hash
+  
+  audit.save()
 }

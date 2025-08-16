@@ -1,145 +1,260 @@
 type Creator @entity {
   id: ID! # wallet address
-  wallet: Bytes!
-  ageVerified: Boolean!
-  talentVerified: Boolean!
+  walletAddress: Bytes!
+  isVerified: Boolean!
+  verificationSBT: Bytes # SBT token ID if verified
   totalEarnings: BigInt!
-  contentCount: Int!
+  totalContent: BigInt!
+  createdAt: BigInt!
+  updatedAt: BigInt!
+  
+  # Relationships
+  content: [Content!]! @derivedFrom(field: "creator")
+  revenueSplits: [RevenueSplit!]! @derivedFrom(field: "creator")
+  moderationActions: [ModerationAction!]! @derivedFrom(field: "creator")
   organization: Organization
-  contents: [Content!]! @derivedFrom(field: "creator")
-  entitlements: [Entitlement!]! @derivedFrom(field: "user")
-  createdAt: BigInt!
-  updatedAt: BigInt!
-}
-
-type Content @entity {
-  id: ID! # content ID
-  creator: Creator!
-  metaURI: String!
-  perceptualHash: Bytes!
-  priceUSDC: BigInt!
-  storageClass: Int! # 0: Shreddable, 1: Permanent
-  moderationStatus: Int! # 0: Pending, 1: Approved, 2: Rejected
-  splitter: Bytes!
-  geoMask: Int!
-  totalSales: BigInt!
-  viewCount: BigInt!
-  createdAt: BigInt!
-  updatedAt: BigInt!
-  entitlements: [Entitlement!]! @derivedFrom(field: "content")
-  moderationEvents: [ModerationEvent!]! @derivedFrom(field: "content")
-  revenueSplits: [RevenueSplit!]! @derivedFrom(field: "content")
-}
-
-type Entitlement @entity {
-  id: ID! # tokenId or user-content combination
-  user: Creator!
-  content: Content!
-  accessType: String! # 'ppv', 'subscription', 'free'
-  tokenId: BigInt!
-  amount: BigInt!
-  expiresAt: BigInt
-  purchasedAt: BigInt!
-  priceUSDC: BigInt!
-  isActive: Boolean!
-}
-
-type RevenueSplit @entity {
-  id: ID! # transaction hash + log index
-  splitter: Bytes!
-  content: Content
-  totalAmount: BigInt!
-  creatorAmount: BigInt!
-  platformAmount: BigInt!
-  recipients: [Bytes!]!
-  amounts: [BigInt!]!
-  timestamp: BigInt!
-  transactionHash: Bytes!
 }
 
 type Organization @entity {
-  id: ID! # organization ID
+  id: ID! # organization contract address
   name: String!
   owner: Creator!
-  orgType: Int! # 0: Individual, 1: Agency, 2: Studio
-  isActive: Boolean!
-  memberCount: Int!
-  totalContent: Int!
+  totalMembers: BigInt!
+  totalContent: BigInt!
   totalEarnings: BigInt!
   createdAt: BigInt!
-  updatedAt: BigInt!
-  members: [OrgMember!]! @derivedFrom(field: "organization")
+  
+  # Relationships
+  members: [Creator!]!
+  content: [Content!]! @derivedFrom(field: "organization")
 }
 
-type OrgMember @entity {
-  id: ID! # orgId-wallet
-  organization: Organization!
-  member: Creator!
-  role: Int! # 0: Owner, 1: Manager, 2: Uploader, 3: Analyst
-  uploadQuota: BigInt!
-  isActive: Boolean!
-  joinedAt: BigInt!
-  updatedAt: BigInt!
-}
-
-type VerificationEvent @entity {
-  id: ID! # transaction hash + log index
+type Content @entity {
+  id: ID! # content ID from contract
+  contentId: BigInt!
   creator: Creator!
-  ageVerified: Boolean!
-  talentVerified: Boolean!
-  timestamp: BigInt!
-  transactionHash: Bytes!
+  organization: Organization
+  title: String!
+  description: String
+  metadataURI: String!
+  perceptualHash: Bytes!
+  isActive: Boolean!
+  moderationStatus: ModerationStatus!
+  geoRestrictions: BigInt! # bitmask
+  createdAt: BigInt!
+  updatedAt: BigInt!
+  
+  # Relationships
+  entitlements: [Entitlement!]! @derivedFrom(field: "content")
+  purchases: [Purchase!]! @derivedFrom(field: "content")
+  revenueSplits: [RevenueSplit!]! @derivedFrom(field: "content")
+  moderationActions: [ModerationAction!]! @derivedFrom(field: "content")
 }
 
-type ModerationEvent @entity {
-  id: ID! # transaction hash + log index
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FLAGGED
+  REMOVED
+}
+
+type Entitlement @entity {
+  id: ID! # tokenId from NFTAccess contract
+  tokenId: BigInt!
   content: Content!
-  previousStatus: Int!
-  newStatus: Int!
-  moderator: Bytes!
-  timestamp: BigInt!
-  transactionHash: Bytes!
+  entitlementType: EntitlementType!
+  price: BigInt!
+  currency: String! # "USDC" or "USD"
+  maxSupply: BigInt!
+  currentSupply: BigInt!
+  expiryDuration: BigInt! # seconds, 0 for permanent
+  isActive: Boolean!
+  createdAt: BigInt!
+  
+  # Relationships
+  purchases: [Purchase!]! @derivedFrom(field: "entitlement")
 }
 
-type AccessEvent @entity {
+enum EntitlementType {
+  PPV # Pay-per-view
+  SUBSCRIPTION # Time-based subscription
+  BUNDLE # Bundle of content
+  TIER # Creator tier access
+}
+
+type Purchase @entity {
   id: ID! # transaction hash + log index
-  user: Creator!
+  buyer: Bytes!
   content: Content!
-  accessType: String!
-  expiresAt: BigInt
-  timestamp: BigInt!
-  transactionHash: Bytes!
-}
-
-type PaymentEvent @entity {
-  id: ID! # transaction hash + log index
-  from: Bytes!
-  to: Bytes!
+  entitlement: Entitlement!
   amount: BigInt!
-  token: Bytes!
-  splitter: Bytes
-  timestamp: BigInt!
+  currency: String!
+  paymentMethod: PaymentMethod!
   transactionHash: Bytes!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  
+  # Revenue split tracking
+  revenueSplit: RevenueSplit
 }
 
-type OrganizationEvent @entity {
+enum PaymentMethod {
+  CRYPTO_USDC
+  FIAT_CARD
+  FIAT_BANK
+}
+
+type RevenueSplit @entity {
+  id: ID! # content ID + creator address
+  content: Content!
+  creator: Creator!
+  percentage: BigInt! # basis points (10000 = 100%)
+  totalEarnings: BigInt!
+  totalWithdrawn: BigInt!
+  createdAt: BigInt!
+  updatedAt: BigInt!
+  
+  # Relationships
+  purchases: [Purchase!]! @derivedFrom(field: "revenueSplit")
+  payouts: [Payout!]! @derivedFrom(field: "revenueSplit")
+}
+
+type Payout @entity {
+  id: ID! # transaction hash
+  revenueSplit: RevenueSplit!
+  recipient: Bytes!
+  amount: BigInt!
+  currency: String!
+  payoutMethod: PayoutMethod!
+  transactionHash: Bytes
+  status: PayoutStatus!
+  requestedAt: BigInt!
+  processedAt: BigInt
+}
+
+enum PayoutMethod {
+  CRYPTO_INSTANT # Direct USDC transfer
+  FIAT_PAXUM # Paxum integration
+  FIAT_BANK # Bank transfer
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+type ModerationAction @entity {
   id: ID! # transaction hash + log index
-  organization: Organization!
-  eventType: String! # 'created', 'member_added', 'member_removed', 'role_updated'
-  member: Creator
-  oldRole: Int
-  newRole: Int
+  content: Content!
+  creator: Creator!
+  moderator: Bytes!
+  action: ModerationActionType!
+  reason: String
+  evidence: String # IPFS hash of evidence
   timestamp: BigInt!
   transactionHash: Bytes!
 }
 
-# Global platform statistics
-type PlatformStats @entity {
-  id: ID! # "platform"
-  totalCreators: Int!
-  totalContent: Int!
-  totalOrganizations: Int!
+enum ModerationActionType {
+  APPROVE
+  REJECT
+  FLAG
+  REMOVE
+  RESTORE
+  DMCA_TAKEDOWN
+}
+
+# Analytics aggregation entities
+type DailyStats @entity {
+  id: ID! # date in YYYY-MM-DD format
+  date: String!
+  totalCreators: BigInt!
+  totalContent: BigInt!
+  totalPurchases: BigInt!
   totalRevenue: BigInt!
-  totalEntitlements: Int!
+  newCreators: BigInt!
+  newContent: BigInt!
+  activeCreators: BigInt! # creators with activity that day
+}
+
+type CreatorStats @entity {
+  id: ID! # creator address + date
+  creator: Creator!
+  date: String!
+  totalEarnings: BigInt!
+  totalViews: BigInt!
+  totalPurchases: BigInt!
+  newContent: BigInt!
+}
+
+# Platform metrics for public status page
+type PlatformMetrics @entity {
+  id: ID! # always "current"
+  totalCreators: BigInt!
+  totalContent: BigInt!
+  totalRevenue: BigInt!
+  totalPayouts: BigInt!
+  averageJoinTime: BigInt! # milliseconds
+  rebufferRate: BigInt! # basis points
+  uptimePercentage: BigInt! # basis points
   lastUpdated: BigInt!
+}
+
+# Compliance and audit trail
+type ConsentRecord @entity {
+  id: ID! # scene hash
+  sceneHash: Bytes!
+  content: Content!
+  participants: [Bytes!]!
+  consentHashes: [Bytes!]! # EIP-712 signature hashes
+  isComplete: Boolean!
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+type AuditLog @entity {
+  id: ID! # transaction hash + log index
+  entity: String! # "Creator", "Content", etc.
+  entityId: String!
+  action: String!
+  actor: Bytes!
+  metadata: String # JSON string
+  timestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+# Age verification tracking
+type AgeVerification @entity {
+  id: ID! # wallet address
+  user: Bytes!
+  isVerified: Boolean!
+  verificationMethod: String! # "KYC", "SBT", etc.
+  verifiedAt: BigInt!
+  expiresAt: BigInt
+  sbtTokenId: Bytes
+}
+
+# DMCA and anti-piracy
+type DMCANotice @entity {
+  id: ID! # notice ID
+  content: Content!
+  claimant: Bytes!
+  targetUrl: String!
+  status: DMCAStatus!
+  filedAt: BigInt!
+  resolvedAt: BigInt
+  evidence: String # IPFS hash
+}
+
+enum DMCAStatus {
+  FILED
+  PROCESSING
+  TAKEDOWN_SENT
+  REMOVED
+  DISPUTED
+  RESOLVED
 }

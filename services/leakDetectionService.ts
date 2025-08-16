@@ -1,6 +1,7 @@
 import { VideoFingerprint, LeakMatch, LeakEvidence, CrawlResult, PlatformMetadata } from '../types';
 import { VideoFingerprintService } from './videoFingerprintService';
 import { WebhookService } from './webhookService';
+import { forensicWatermarkService, ForensicInvestigation } from './forensicWatermarkService';
 import Redis from 'ioredis';
 
 interface CrawlerConfig {
@@ -180,6 +181,23 @@ export class LeakDetectionService {
           );
 
           if (matchResult.similarity >= this.config.matchThreshold) {
+            // Create forensic investigation for high-confidence matches
+            let forensicInvestigation: ForensicInvestigation | undefined;
+            
+            if (matchResult.similarity >= 0.95) {
+              try {
+                // Simulate downloading leaked content for forensic analysis
+                const leakContent = Buffer.from(`mock_leaked_content_${video.url}`);
+                forensicInvestigation = await forensicWatermarkService.createForensicInvestigation(
+                  video.url,
+                  leakContent
+                );
+                console.log(`Created forensic investigation ${forensicInvestigation.id} for high-confidence leak`);
+              } catch (error) {
+                console.error('Failed to create forensic investigation:', error);
+              }
+            }
+
             const leakMatch: LeakMatch = {
               id: `leak_${contentId}_${Date.now()}`,
               contentId,
@@ -195,7 +213,8 @@ export class LeakDetectionService {
                   title: video.title,
                   duration: video.duration,
                   uploadDate: video.uploadDate,
-                  platform: result.platform
+                  platform: result.platform,
+                  forensicInvestigationId: forensicInvestigation?.id
                 }
               }
             };

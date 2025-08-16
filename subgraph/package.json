@@ -1,24 +1,22 @@
 {
-  "name": "reelverse18-subgraph",
+  "name": "decentralized-adult-platform-subgraph",
   "version": "1.0.0",
-  "description": "The Graph subgraph for Reelverse18 decentralized adult platform",
+  "description": "The Graph subgraph for decentralized adult platform analytics",
   "scripts": {
     "codegen": "graph codegen",
     "build": "graph build",
-    "deploy": "graph deploy --node https://api.studio.thegraph.com/deploy/ reelverse18-subgraph",
-    "create-local": "graph create --node http://localhost:8020/ reelverse18-subgraph",
-    "remove-local": "graph remove --node http://localhost:8020/ reelverse18-subgraph",
-    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 reelverse18-subgraph",
+    "deploy": "graph deploy --node https://api.thegraph.com/deploy/ decentralized-adult-platform",
+    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 decentralized-adult-platform",
+    "create-local": "graph create --node http://localhost:8020/ decentralized-adult-platform",
+    "remove-local": "graph remove --node http://localhost:8020/ decentralized-adult-platform",
     "test": "graph test",
-    "update-config": "node scripts/update-config.js",
-    "prepare": "npm run codegen && npm run build"
+    "prepare:polygon": "mustache config/polygon.json subgraph.template.yaml > subgraph.yaml"
   },
   "dependencies": {
     "@graphprotocol/graph-cli": "0.56.0",
     "@graphprotocol/graph-ts": "0.30.0"
   },
   "devDependencies": {
-    "matchstick-as": "0.5.0",
-    "js-yaml": "^4.1.0"
+    "mustache": "^4.2.0"
   }
 }

@@ -218,7 +218,7 @@
 
 ## Critical Gap Closure (Go-to-Market Readiness)
 
-- [ ] 58. Complete end-to-end testing and security audit (from task 36)
+- [ ] 70. Complete end-to-end testing and security audit (from task 36)
 
   - Create comprehensive E2E test suite with Playwright covering all user journeys
   - Implement k6 load testing for concurrent users and payments
@@ -228,7 +228,87 @@
   - Implement kill switches for all new features (54-57)
   - _Requirements: All requirements for complete system validation_
 
-- [x] 59. Implement unified error handling and feature flags
+- [ ] 71. Policy pack and legal documentation
+
+  - Create Terms of Service, Acceptable Use Policy, DMCA Policy, 2257 Policy
+  - Build Privacy Policy and Cookie Policy with GDPR/CCPA compliance
+  - Implement incident response playbook and law enforcement request process
+  - Create takedown appeal process and content dispute resolution
+  - Add policy version management and user acceptance tracking
+  - Build legal document storage and retrieval system
+  - _Requirements: Legal compliance and agency partnership requirements_
+
+- [ ] 72. Sanctions screening and country enforcement
+
+  - Implement OFAC/UK/EU sanctions screening for creators and payout recipients
+  - Create country blocklist management with geo-compliance rules
+  - Add sanctions database integration and real-time screening
+  - Build compliance violation detection and account suspension
+  - Implement sanctions appeal process and documentation
+  - Add sanctions screening to KYC and payout workflows
+  - _Requirements: International compliance and payment partner requirements_
+
+- [ ] 73. CSAM detection and escalation procedures
+
+  - Integrate PhotoDNA/HashCompare or commercial CSAM detection service
+  - Create clear "report to NCMEC/law enforcement" standard operating procedures
+  - Implement staff permissioning system for accessing evidence materials
+  - Build automated CSAM detection pipeline with human review queue
+  - Create incident escalation workflow and law enforcement coordination
+  - Add CSAM detection audit trail and compliance reporting
+  - _Requirements: Child safety compliance and legal requirements_
+
+- [ ] 74. Secrets and key management infrastructure
+
+  - Implement AWS KMS/GCP KMS for envelope encryption of sensitive data
+  - Create envelope encryption for evidence packs and consent documents
+  - Build HLS key rotation cadence and automated key management
+  - Implement secret rotation runbook and automated rotation schedules
+  - Add key versioning and rollback capabilities for security incidents
+  - Create secrets audit trail and access logging
+  - _Requirements: Security compliance and data protection requirements_
+
+- [ ] 75. Passkey wallet recovery and device management
+
+  - Build passkey recovery flows with backup email and device options
+  - Create passkey re-binding functionality for device changes
+  - Implement device management UI showing all registered passkeys
+  - Add social recovery and account recovery guardrails
+  - Build passkey revocation and security incident response
+  - Create passkey usage analytics and security monitoring
+  - _Requirements: User experience and account security requirements_
+
+- [ ] 76. Financial operations completeness
+
+  - Implement invoice numbering compliance per region (EU, US, etc.)
+  - Create currency rounding rules and precision handling
+  - Build audit export functionality for accountants and tax preparation
+  - Add financial reconciliation tools and discrepancy detection
+  - Implement multi-currency support and exchange rate management
+  - Create financial reporting dashboard for compliance and auditing
+  - _Requirements: Financial compliance and accounting requirements_
+
+- [ ] 77. AI usage transparency and opt-outs
+
+  - Create "AI Use Disclosure" documentation in Help/Docs section
+  - Document what content is AI-generated (tags, captions, pricing suggestions)
+  - Implement opt-out toggles for AI features where applicable
+  - Add AI transparency indicators in UI for AI-generated content
+  - Create AI usage analytics and user preference tracking
+  - Build AI ethics and transparency reporting dashboard
+  - _Requirements: AI transparency and user control requirements_
+
+- [ ] 78. Multi-CDN chaos testing and failover validation
+
+  - Create chaos testing suite for forced CDN failover scenarios
+  - Implement signed URL key rotation testing with zero downtime
+  - Build regional blocklist verification end-to-end testing
+  - Add CDN performance monitoring and alerting validation
+  - Create CDN failover runbooks and incident response procedures
+  - Implement automated CDN health checks and failover triggers
+  - _Requirements: Infrastructure resilience and reliability requirements_
+
+- [x] 79. Implement unified error handling and feature flags
 
   - Create unified error envelope with correlation IDs and idempotency
   - Build React ErrorBoundary components with retry mechanisms
@@ -238,7 +318,7 @@
   - Implement error monitoring and alerting integration
   - _Requirements: 6.1, 8.1, 9.1_
 
-- [x] 60. Build privacy and data compliance operations
+- [x] 80. Build privacy and data compliance operations
 
   - Implement GDPR/CCPA data export functionality (30-day SLA)
   - Create data deletion pipeline with PII removal and anonymization
@@ -248,7 +328,7 @@
   - Add data processing consent management and opt-out capabilities
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6_
 
-- [x] 61. Implement payments and finance operations edge cases
+- [x] 81. Implement payments and finance operations edge cases
 
   - Add 3DS/SCA authentication flows for EU payment compliance
   - Create receipt and invoice PDF generation for all transactions
@@ -258,8 +338,7 @@
   - Create international payment compliance and currency handling
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6_
 
-- [x] 62. Build AI observability and governance operations
-
+- [x] 82. Build AI observability and governance operations
 
   - Create model version registry with A/B testing and rollback capabilities
   - Implement embedding drift detection with automated alerting
@@ -269,7 +348,7 @@
   - Implement AI governance dashboard with compliance reporting
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6_
 
-- [ ] 63. Create API and partner integration readiness
+- [x] 83. Create API and partner integration readiness
 
   - Build public API with scoped keys (read-only analytics, content search)
   - Create entitlement verification API for partner integrations
@@ -279,7 +358,7 @@
   - Implement request correlation IDs and detailed error responses
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6_
 
-- [ ] 64. Implement multi-CDN and video infrastructure resilience
+- [x] 84. Implement multi-CDN and video infrastructure resilience
 
   - Set up primary and backup CDN providers with automatic failover
   - Implement signed URL key rotation with zero-downtime deployment
@@ -289,7 +368,7 @@
   - Build multi-CDN load balancing and traffic distribution
   - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6_
 
-- [ ] 65. Build referral and affiliate growth systems
+- [x] 85. Build referral and affiliate growth systems
 
   - Create referral code generation and unique tracking links
   - Implement attribution tracking with accurate source identification
@@ -299,7 +378,7 @@
   - Implement comprehensive attribution reporting and analytics
   - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 11.6_
 
-- [ ] 66. Implement forensic watermarking and advanced anti-piracy
+- [x] 86. Implement forensic watermarking and advanced anti-piracy
 
   - Add invisible forensic watermarking for premium content tiers
   - Create forensic watermark extraction and analysis tools
@@ -311,7 +390,7 @@
 
 ## Priority C Features (Strategic Moat)
 
-- [ ] 67. Implement C2PA provenance and device attestation
+- [x] 67. Implement C2PA provenance and device attestation
 
   - Integrate C2PA metadata capture during content upload
   - Build provenance verification and badge display system
@@ -320,7 +399,7 @@
   - Add "Provenance Verified" trust indicators for consumers
   - _Requirements: 13.1, 13.2_
 
-- [ ] 68. Research and prototype ZK age-proof system
+- [x] 68. Research and prototype ZK age-proof system
 
   - Research zkEmail and Anon-Aadhaar style implementations
   - Build prototype ZK proof system for age verification
@@ -329,7 +408,8 @@
   - Document privacy policy and threat model for ZK system
   - _Requirements: 14.1, 14.2_
 
-- [ ] 69. Implement model governance and safety guardrails
+- [x] 69. Implement model governance and safety guardrails
+
   - Create model cards and bias tracking for all AI systems
   - Build red-team testing framework for AI safety
   - Implement PII detection and boundary enforcement

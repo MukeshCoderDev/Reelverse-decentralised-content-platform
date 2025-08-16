@@ -1,25 +1,27 @@
 {
   "network": "polygon",
-  "contracts": {
-    "CreatorRegistry": {
-      "address": "0x0000000000000000000000000000000000000000",
-      "startBlock": 0
-    },
-    "ContentRegistry": {
-      "address": "0x0000000000000000000000000000000000000000", 
-      "startBlock": 0
-    },
-    "NFTAccess": {
-      "address": "0x0000000000000000000000000000000000000000",
-      "startBlock": 0
-    },
-    "RevenueSplitter": {
-      "address": "0x0000000000000000000000000000000000000000",
-      "startBlock": 0
-    },
-    "OrganizationRegistry": {
-      "address": "0x0000000000000000000000000000000000000000",
-      "startBlock": 0
-    }
+  "creatorRegistry": {
+    "address": "0x0000000000000000000000000000000000000000",
+    "startBlock": 0
+  },
+  "contentRegistry": {
+    "address": "0x0000000000000000000000000000000000000000", 
+    "startBlock": 0
+  },
+  "nftAccess": {
+    "address": "0x0000000000000000000000000000000000000000",
+    "startBlock": 0
+  },
+  "revenueSplitter": {
+    "address": "0x0000000000000000000000000000000000000000",
+    "startBlock": 0
+  },
+  "organizationRegistry": {
+    "address": "0x0000000000000000000000000000000000000000",
+    "startBlock": 0
+  },
+  "ageVerifiedSBT": {
+    "address": "0x0000000000000000000000000000000000000000",
+    "startBlock": 0
   }
 }
