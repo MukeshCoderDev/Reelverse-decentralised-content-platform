@@ -108,6 +108,18 @@ export class MetricsCollectionService {
       session.lastActivity = new Date();
       session.events.push(metrics);
 
+      // Send to real-time aggregator
+      const { RealTimeMetricsAggregator } = await import('./realTimeMetricsAggregator');
+      const aggregator = RealTimeMetricsAggregator.getInstance();
+      aggregator.processPlaybackMetrics(sessionId, metrics.event, {
+        joinTime: metrics.joinTime,
+        rebufferDuration: metrics.rebufferDuration,
+        errorCode: metrics.errorCode,
+        errorMessage: metrics.errorMessage,
+        quality: metrics.quality,
+        sessionDuration: metrics.videoInfo?.duration
+      });
+
       // Real-time processing for critical events
       if (metrics.event === 'error' || (metrics.joinTime && metrics.joinTime > 5000)) {
         await this.processRealTimeAlert(metrics);
@@ -127,6 +139,17 @@ export class MetricsCollectionService {
       this.businessEventsBuffer.push({
         ...event,
         timestamp: new Date()
+      });
+
+      // Send to real-time aggregator
+      const { RealTimeMetricsAggregator } = await import('./realTimeMetricsAggregator');
+      const aggregator = RealTimeMetricsAggregator.getInstance();
+      aggregator.processBusinessMetrics(event.eventType, {
+        amount: event.amount,
+        currency: event.currency,
+        processingTime: event.processingTime,
+        userId: event.userId,
+        ...event.metadata
       });
 
       console.log(`Collected business event: ${event.eventType}`);

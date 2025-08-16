@@ -54,7 +54,8 @@ const App: React.FC = () => {
         <FeatureFlagProvider>
           <OrganizationProvider>
             <HashRouter>
-              <MobileLayout>
+              <div data-testid="app-loaded">
+                <MobileLayout>
         <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/create" element={<CreatePage />} />
@@ -109,7 +110,8 @@ const App: React.FC = () => {
             
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
-              </MobileLayout>
+                </MobileLayout>
+              </div>
             </HashRouter>
           </OrganizationProvider>
         </FeatureFlagProvider>

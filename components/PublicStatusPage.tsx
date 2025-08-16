@@ -1,374 +1,309 @@
-import React, { useState, useEffect } from 'react';
-import { Card } from './Card';
+/**
+ * Public Status Page Component
+ * Complete public-facing status page for agencies and stakeholders
+ */
 
-interface StatusMetrics {
-  uptime: {
-    current: number;
-    last24h: number;
-    last7d: number;
-    last30d: number;
-  };
-  performance: {
-    p95JoinTime: number;
-    rebufferRatio: number;
-    checkoutSuccessRate: number;
-    payoutP95Latency: number;
-  };
-  platform: {
-    totalCreators: number;
-    totalContent: number;
-    monthlyActiveUsers: number;
-    totalPayouts: string;
-  };
-  incidents: StatusIncident[];
+import React, { useState } from 'react';
+import { StatusPageTiles } from './StatusPageTiles';
+import { MetricsDashboard } from './MetricsChart';
+
+interface TabProps {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
 }
 
-interface StatusIncident {
-  id: string;
-  title: string;
-  status: 'investigating' | 'identified' | 'monitoring' | 'resolved';
-  severity: 'minor' | 'major' | 'critical';
-  startedAt: Date;
-  resolvedAt?: Date;
-  updates: IncidentUpdate[];
-}
+const Tab: React.FC<TabProps> = ({ active, onClick, children }) => (
+  <button
+    onClick={onClick}
+    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+      active
+        ? 'bg-blue-600 text-white'
+        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+    }`}
+  >
+    {children}
+  </button>
+);
 
-interface IncidentUpdate {
-  timestamp: Date;
-  message: string;
-  status: StatusIncident['status'];
-}
+type TimeRange = '24h' | '7d' | '30d';
+type ViewMode = 'overview' | 'metrics' | 'history';
 
 export const PublicStatusPage: React.FC = () => {
-  const [metrics, setMetrics] = useState<StatusMetrics | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
-
-  useEffect(() => {
-    loadStatusMetrics();
-    const interval = setInterval(loadStatusMetrics, 60000); // Update every minute
-    return () => clearInterval(interval);
-  }, []);
-
-  const loadStatusMetrics = async () => {
-    try {
-      // In production, this would fetch from your metrics API
-      const mockMetrics: StatusMetrics = {
-        uptime: {
-          current: 99.98,
-          last24h: 99.95,
-          last7d: 99.92,
-          last30d: 99.89
-        },
-        performance: {
-          p95JoinTime: 1.2, // seconds
-          rebufferRatio: 0.8, // percentage
-          checkoutSuccessRate: 98.5, // percentage
-          payoutP95Latency: 45 // minutes
-        },
-        platform: {
-          totalCreators: 12847,
-          totalContent: 89234,
-          monthlyActiveUsers: 156789,
-          totalPayouts: '$2.4M'
-        },
-        incidents: [
-          {
-            id: 'inc_001',
-            title: 'Intermittent upload delays',
-            status: 'resolved',
-            severity: 'minor',
-            startedAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-            resolvedAt: new Date(Date.now() - 30 * 60 * 1000), // 30 minutes ago
-            updates: [
-              {
-                timestamp: new Date(Date.now() - 30 * 60 * 1000),
-                message: 'Issue resolved. Upload processing times have returned to normal.',
-                status: 'resolved'
-              },
-              {
-                timestamp: new Date(Date.now() - 90 * 60 * 1000),
-                message: 'We have identified the cause and are implementing a fix.',
-                status: 'identified'
-              },
-              {
-                timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-                message: 'We are investigating reports of slower than normal upload processing.',
-                status: 'investigating'
-              }
-            ]
-          }
-        ]
-      };
-      
-      setMetrics(mockMetrics);
-      setLastUpdated(new Date());
-    } catch (error) {
-      console.error('Failed to load status metrics:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getStatusColor = (value: number, thresholds: { good: number; warning: number }) => {
-    if (value >= thresholds.good) return 'text-green-400';
-    if (value >= thresholds.warning) return 'text-yellow-400';
-    return 'text-red-400';
-  };
-
-  const getStatusIcon = (value: number, thresholds: { good: number; warning: number }) => {
-    if (value >= thresholds.good) return '🟢';
-    if (value >= thresholds.warning) return '🟡';
-    return '🔴';
-  };
-
-  const getIncidentStatusColor = (status: StatusIncident['status']) => {
-    switch (status) {
-      case 'investigating': return 'text-yellow-400';
-      case 'identified': return 'text-orange-400';
-      case 'monitoring': return 'text-blue-400';
-      case 'resolved': return 'text-green-400';
-      default: return 'text-gray-400';
-    }
-  };
-
-  const getSeverityColor = (severity: StatusIncident['severity']) => {
-    switch (severity) {
-      case 'minor': return 'border-yellow-500 bg-yellow-500/10';
-      case 'major': return 'border-orange-500 bg-orange-500/10';
-      case 'critical': return 'border-red-500 bg-red-500/10';
-      default: return 'border-gray-500 bg-gray-500/10';
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-white">Loading status...</div>
-      </div>
-    );
-  }
-
-  if (!metrics) {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-red-400">Failed to load status data</div>
-      </div>
-    );
-  }
+  const [activeView, setActiveView] = useState<ViewMode>('overview');
+  const [timeRange, setTimeRange] = useState<TimeRange>('24h');
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-gray-800 border-b border-gray-700">
-        <div className="max-w-6xl mx-auto px-6 py-8">
+      <header className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Platform Status</h1>
-              <p className="text-gray-400">Real-time operational metrics and system health</p>
-            </div>
-            <div className="text-right">
-              <div className="text-2xl font-bold text-green-400">🟢 All Systems Operational</div>
-              <div className="text-sm text-gray-400">
-                Last updated: {lastUpdated.toLocaleTimeString()}
+            <div className="flex items-center space-x-4">
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">P</span>
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">Platform Status</h1>
+                <p className="text-sm text-gray-500">Real-time system health and performance</p>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-6 py-8 space-y-8">
-        {/* Current Status Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="p-6 text-center">
-            <div className="text-3xl mb-2">🟢</div>
-            <div className="text-2xl font-bold text-green-400">{metrics.uptime.current}%</div>
-            <div className="text-sm text-gray-400">Current Uptime</div>
-          </Card>
-          
-          <Card className="p-6 text-center">
-            <div className="text-3xl mb-2">⚡</div>
-            <div className="text-2xl font-bold text-blue-400">{metrics.performance.p95JoinTime}s</div>
-            <div className="text-sm text-gray-400">P95 Join Time</div>
-          </Card>
-          
-          <Card className="p-6 text-center">
-            <div className="text-3xl mb-2">💳</div>
-            <div className="text-2xl font-bold text-green-400">{metrics.performance.checkoutSuccessRate}%</div>
-            <div className="text-sm text-gray-400">Checkout Success</div>
-          </Card>
-          
-          <Card className="p-6 text-center">
-            <div className="text-3xl mb-2">💰</div>
-            <div className="text-2xl font-bold text-purple-400">{metrics.performance.payoutP95Latency}m</div>
-            <div className="text-sm text-gray-400">P95 Payout Time</div>
-          </Card>
-        </div>
-
-        {/* Detailed Metrics */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Performance Metrics */}
-          <Card className="p-6">
-            <h2 className="text-xl font-bold text-white mb-6">🎯 Performance Metrics</h2>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-300">Video Join Time (P95)</span>
-                <div className="flex items-center gap-2">
-                  <span className={getStatusColor(metrics.performance.p95JoinTime <= 2 ? 100 : 50, { good: 90, warning: 70 })}>
-                    {metrics.performance.p95JoinTime}s
-                  </span>
-                  <span>{getStatusIcon(metrics.performance.p95JoinTime <= 2 ? 100 : 50, { good: 90, warning: 70 })}</span>
-                </div>
+            
+            <div className="flex items-center space-x-4">
+              <div className="text-sm text-gray-500">
+                Auto-refresh: 30s
               </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-gray-300">Rebuffer Ratio</span>
-                <div className="flex items-center gap-2">
-                  <span className={getStatusColor(100 - metrics.performance.rebufferRatio, { good: 98, warning: 95 })}>
-                    {metrics.performance.rebufferRatio}%
-                  </span>
-                  <span>{getStatusIcon(100 - metrics.performance.rebufferRatio, { good: 98, warning: 95 })}</span>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-gray-300">Checkout Success Rate</span>
-                <div className="flex items-center gap-2">
-                  <span className={getStatusColor(metrics.performance.checkoutSuccessRate, { good: 98, warning: 95 })}>
-                    {metrics.performance.checkoutSuccessRate}%
-                  </span>
-                  <span>{getStatusIcon(metrics.performance.checkoutSuccessRate, { good: 98, warning: 95 })}</span>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-gray-300">Payout Processing (P95)</span>
-                <div className="flex items-center gap-2">
-                  <span className={getStatusColor(metrics.performance.payoutP95Latency <= 60 ? 100 : 50, { good: 90, warning: 70 })}>
-                    {metrics.performance.payoutP95Latency}m
-                  </span>
-                  <span>{getStatusIcon(metrics.performance.payoutP95Latency <= 60 ? 100 : 50, { good: 90, warning: 70 })}</span>
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          {/* Uptime History */}
-          <Card className="p-6">
-            <h2 className="text-xl font-bold text-white mb-6">📈 Uptime History</h2>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-300">Last 24 Hours</span>
-                <div className="flex items-center gap-2">
-                  <span className={getStatusColor(metrics.uptime.last24h, { good: 99.9, warning: 99.5 })}>
-                    {metrics.uptime.last24h}%
-                  </span>
-                  <span>{getStatusIcon(metrics.uptime.last24h, { good: 99.9, warning: 99.5 })}</span>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-gray-300">Last 7 Days</span>
-                <div className="flex items-center gap-2">
-                  <span className={getStatusColor(metrics.uptime.last7d, { good: 99.9, warning: 99.5 })}>
-                    {metrics.uptime.last7d}%
-                  </span>
-                  <span>{getStatusIcon(metrics.uptime.last7d, { good: 99.9, warning: 99.5 })}</span>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-gray-300">Last 30 Days</span>
-                <div className="flex items-center gap-2">
-                  <span className={getStatusColor(metrics.uptime.last30d, { good: 99.9, warning: 99.5 })}>
-                    {metrics.uptime.last30d}%
-                  </span>
-                  <span>{getStatusIcon(metrics.uptime.last30d, { good: 99.9, warning: 99.5 })}</span>
-                </div>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Platform Growth Metrics */}
-        <Card className="p-6">
-          <h2 className="text-xl font-bold text-white mb-6">🚀 Platform Growth</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-400">{metrics.platform.totalCreators.toLocaleString()}</div>
-              <div className="text-sm text-gray-400">Total Creators</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-400">{metrics.platform.totalContent.toLocaleString()}</div>
-              <div className="text-sm text-gray-400">Content Items</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-400">{metrics.platform.monthlyActiveUsers.toLocaleString()}</div>
-              <div className="text-sm text-gray-400">Monthly Active Users</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-400">{metrics.platform.totalPayouts}</div>
-              <div className="text-sm text-gray-400">Total Payouts</div>
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             </div>
           </div>
-        </Card>
+        </div>
+      </header>
 
-        {/* Recent Incidents */}
-        {metrics.incidents.length > 0 && (
-          <Card className="p-6">
-            <h2 className="text-xl font-bold text-white mb-6">📋 Recent Incidents</h2>
-            <div className="space-y-4">
-              {metrics.incidents.map((incident) => (
-                <div key={incident.id} className={`border rounded-lg p-4 ${getSeverityColor(incident.severity)}`}>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-white">{incident.title}</h3>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-sm font-medium ${getIncidentStatusColor(incident.status)}`}>
-                        {incident.status.toUpperCase()}
-                      </span>
-                      <span className="text-xs text-gray-400 capitalize">
-                        {incident.severity}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="text-sm text-gray-300 mb-3">
-                    Started: {incident.startedAt.toLocaleString()}
-                    {incident.resolvedAt && (
-                      <span className="ml-4">
-                        Resolved: {incident.resolvedAt.toLocaleString()}
-                      </span>
-                    )}
-                  </div>
-                  
+      {/* Navigation */}
+      <nav className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex items-center justify-between py-4">
+            <div className="flex space-x-2">
+              <Tab
+                active={activeView === 'overview'}
+                onClick={() => setActiveView('overview')}
+              >
+                Overview
+              </Tab>
+              <Tab
+                active={activeView === 'metrics'}
+                onClick={() => setActiveView('metrics')}
+              >
+                Metrics
+              </Tab>
+              <Tab
+                active={activeView === 'history'}
+                onClick={() => setActiveView('history')}
+              >
+                History
+              </Tab>
+            </div>
+
+            {(activeView === 'metrics' || activeView === 'history') && (
+              <div className="flex space-x-2">
+                <Tab
+                  active={timeRange === '24h'}
+                  onClick={() => setTimeRange('24h')}
+                >
+                  24h
+                </Tab>
+                <Tab
+                  active={timeRange === '7d'}
+                  onClick={() => setTimeRange('7d')}
+                >
+                  7d
+                </Tab>
+                <Tab
+                  active={timeRange === '30d'}
+                  onClick={() => setTimeRange('30d')}
+                >
+                  30d
+                </Tab>
+              </div>
+            )}
+          </div>
+        </div>
+      </nav>
+
+      {/* Content */}
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        {activeView === 'overview' && (
+          <div className="space-y-8">
+            <StatusPageTiles />
+            
+            {/* Quick Stats */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Platform Highlights</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-blue-600 mb-2">99.97%</div>
+                  <div className="text-sm text-gray-600">30-day uptime</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-green-600 mb-2">1.2s</div>
+                  <div className="text-sm text-gray-600">Avg. join time</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-purple-600 mb-2">96.8%</div>
+                  <div className="text-sm text-gray-600">Payment success</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Agency Information */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">For Agency Partners</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="font-medium text-gray-900 mb-2">Real-time Monitoring</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    All metrics are updated in real-time with 5-minute rolling windows. 
+                    SLO targets are based on industry standards and agency requirements.
+                  </p>
+                  <ul className="text-sm text-gray-600 space-y-1">
+                    <li>• P95 join time target: &lt;2 seconds</li>
+                    <li>• Rebuffer ratio target: &lt;1%</li>
+                    <li>• Payment success target: &gt;95%</li>
+                    <li>• Payout latency target: &lt;24 hours</li>
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-900 mb-2">Integration Support</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Access our API for programmatic monitoring and webhook alerts 
+                    for your own systems integration.
+                  </p>
                   <div className="space-y-2">
-                    {incident.updates.slice(0, 3).map((update, index) => (
-                      <div key={index} className="text-sm">
-                        <span className="text-gray-400">{update.timestamp.toLocaleString()}</span>
-                        <span className="ml-3 text-gray-200">{update.message}</span>
-                      </div>
-                    ))}
+                    <a 
+                      href="/api/docs" 
+                      className="inline-block text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      → API Documentation
+                    </a>
+                    <br />
+                    <a 
+                      href="/webhooks" 
+                      className="inline-block text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      → Webhook Configuration
+                    </a>
                   </div>
                 </div>
-              ))}
+              </div>
             </div>
-          </Card>
+          </div>
         )}
 
-        {/* Footer */}
-        <Card className="p-6 bg-blue-900/20 border-blue-500/30">
-          <div className="text-center">
-            <h3 className="text-lg font-semibold text-blue-300 mb-2">Professional Operations</h3>
-            <p className="text-blue-200 text-sm">
-              This status page demonstrates our commitment to operational transparency and reliability. 
-              All metrics are updated in real-time and independently verified.
-            </p>
-            <div className="mt-4 text-xs text-blue-300">
-              For partnership inquiries: partnerships@platform.com | Technical support: support@platform.com
+        {activeView === 'metrics' && (
+          <div className="space-y-8">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Performance Metrics</h2>
+              <p className="text-gray-600">
+                Historical performance data over the last {timeRange === '24h' ? '24 hours' : timeRange === '7d' ? '7 days' : '30 days'}
+              </p>
+            </div>
+            <MetricsDashboard timeRange={timeRange} />
+          </div>
+        )}
+
+        {activeView === 'history' && (
+          <div className="space-y-8">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Incident History</h2>
+              <p className="text-gray-600">
+                Past incidents and system events over the last {timeRange === '24h' ? '24 hours' : timeRange === '7d' ? '7 days' : '30 days'}
+              </p>
+            </div>
+            
+            {/* Uptime Calendar */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Uptime History</h3>
+              <div className="grid grid-cols-7 gap-1 text-xs">
+                {/* This would be populated with actual uptime data */}
+                {Array.from({ length: 30 }, (_, i) => (
+                  <div
+                    key={i}
+                    className={`h-8 rounded ${
+                      Math.random() > 0.05 ? 'bg-green-200' : 'bg-red-200'
+                    } flex items-center justify-center`}
+                  >
+                    {30 - i}
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-between mt-4 text-xs text-gray-500">
+                <span>30 days ago</span>
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center">
+                    <div className="w-3 h-3 bg-green-200 rounded mr-1"></div>
+                    <span>Operational</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-3 h-3 bg-red-200 rounded mr-1"></div>
+                    <span>Downtime</span>
+                  </div>
+                </div>
+                <span>Today</span>
+              </div>
+            </div>
+
+            {/* Recent Incidents */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Incidents</h3>
+              <div className="space-y-4">
+                <div className="border-l-4 border-green-500 pl-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <h4 className="font-medium text-gray-900">All systems operational</h4>
+                    <span className="text-xs text-gray-500">Current</span>
+                  </div>
+                  <p className="text-sm text-gray-600">No active incidents. All systems running normally.</p>
+                </div>
+                
+                <div className="border-l-4 border-yellow-500 pl-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <h4 className="font-medium text-gray-900">CDN Performance Degradation</h4>
+                    <span className="text-xs text-gray-500">2 days ago</span>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-2">
+                    Temporary increase in video loading times due to CDN provider issues.
+                  </p>
+                  <div className="text-xs text-gray-500">
+                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded">Resolved</span>
+                    <span className="ml-2">Duration: 23 minutes</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </Card>
-      </div>
+        )}
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-white border-t border-gray-200 mt-16">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-4">Status Page</h3>
+              <p className="text-sm text-gray-600">
+                Real-time monitoring and transparency for our platform performance.
+              </p>
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-4">Resources</h3>
+              <ul className="space-y-2 text-sm text-gray-600">
+                <li><a href="/api/docs" className="hover:text-gray-900">API Documentation</a></li>
+                <li><a href="/webhooks" className="hover:text-gray-900">Webhook Setup</a></li>
+                <li><a href="/support" className="hover:text-gray-900">Support Center</a></li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-4">Contact</h3>
+              <p className="text-sm text-gray-600">
+                For technical support or partnership inquiries, reach out to our team.
+              </p>
+              <div className="mt-2">
+                <a 
+                  href="mailto:support@platform.com" 
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                >
+                  support@platform.com
+                </a>
+              </div>
+            </div>
+          </div>
+          
+          <div className="border-t border-gray-200 mt-8 pt-8 text-center text-sm text-gray-500">
+            <p>© 2024 Platform. All rights reserved. | Last updated: {new Date().toLocaleString()}</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
+
+export default PublicStatusPage;

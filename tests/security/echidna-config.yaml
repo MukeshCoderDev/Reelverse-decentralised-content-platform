@@ -1,0 +1,109 @@
+# Echidna Configuration for Go-Live Sprint Security Audit
+# Comprehensive fuzzing configuration for smart contracts
+
+# Test execution settings
+testLimit: 50000          # Number of test sequences to run
+testMaxTime: 3600         # Maximum time in seconds (1 hour)
+shrinkLimit: 5000         # Number of shrinking attempts
+seqLen: 100              # Length of sequences of transactions
+contractAddr: "0x00a329c0648769A73afAc7F9381E08FB43dBEA72"
+
+# Coverage settings
+coverage: true
+corpusDir: "tests/security/corpus"
+coverageFormats: ["txt", "html", "lcov"]
+
+# Transaction settings
+sender: ["0x10000", "0x20000", "0x30000"]  # Test accounts
+psender: 0.5                               # Probability of sender change
+fprefix: "echidna_"                       # Test function prefix
+deployer: "0x41414141"                    # Contract deployer address
+balanceAddr: 1000000000000000000000       # Starting balance (1000 ETH)
+balanceContract: 0                        # Contract starting balance
+codeSize: 0x6000                         # Maximum code size
+maxGasprice: 0x9184e72a000               # Maximum gas price
+maxTimeDelay: 604800                     # Maximum time delay (1 week)
+maxBlockDelay: 60480                     # Maximum block delay
+
+# Fuzzing strategy
+mutConsts: []                            # Constants to mutate
+dictFreq: 0.40                          # Dictionary usage frequency
+corpusDir: "tests/security/corpus"       # Corpus directory
+
+# Property testing
+checkAsserts: true                       # Check assert statements
+testDestruct: false                      # Test selfdestruct calls
+stopOnFail: false                       # Continue on first failure
+estimateGas: true                       # Estimate gas usage
+
+# Output settings
+format: "text"                          # Output format
+quiet: false                           # Quiet mode
+seed: null                             # Random seed (null for random)
+
+# Solidity compilation
+solcArgs: "--optimize --optimize-runs 200"
+solcLibs: []
+cryticArgs: []
+
+# Multi-ABI support
+multiAbi: false
+allContracts: false
+
+# Advanced settings
+workers: 1                             # Number of workers
+timeout: null                          # Individual test timeout
+filterBlacklist: true                  # Filter blacklisted functions
+filterFunctions: []                    # Functions to filter
+filterValues: []                       # Values to filter
+
+# Gas analysis
+gasLimit: 12500000                     # Gas limit per transaction
+gasPrice: 20000000000                  # Gas price in wei
+
+# State management
+resetCaller: true                      # Reset caller between sequences
+initialize: null                       # Initialization file
+
+# Crytic integration
+crytic: false                          # Use Crytic platform
+dashboard: false                       # Enable dashboard
+
+# Property categories for adult platform
+# These will be implemented in the test contracts
+
+# Access Control Properties:
+# - Only authorized users can perform privileged operations
+# - Role-based permissions are enforced correctly
+# - Ownership transfers work as expected
+
+# Payment Properties:
+# - Payment amounts are calculated correctly
+# - Revenue splits are distributed accurately
+# - No funds can be drained unexpectedly
+# - Refunds work correctly
+
+# Content Properties:
+# - Content ownership is tracked correctly
+# - Access permissions are enforced
+# - Metadata updates are restricted to owners
+
+# Upgrade Properties:
+# - Only authorized accounts can upgrade contracts
+# - Upgrades preserve critical state
+# - Upgrade mechanisms cannot be exploited
+
+# Reentrancy Properties:
+# - External calls are protected against reentrancy
+# - State changes occur before external calls
+# - Reentrancy guards function correctly
+
+# Integer Properties:
+# - No overflow/underflow in arithmetic operations
+# - Safe math is used consistently
+# - Edge cases in calculations are handled
+
+# Time Properties:
+# - Time-dependent logic works correctly
+# - Timestamp manipulation is prevented
+# - Deadline enforcement is secure
