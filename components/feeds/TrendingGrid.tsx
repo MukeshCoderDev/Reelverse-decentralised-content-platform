@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Content } from '../../types';
 import Icon from '../Icon';
+import { YouTubeStyleVideoPlayer } from '../content/YouTubeStyleVideoPlayer';
 
 interface TrendingGridProps {
     items: Content[];
@@ -10,6 +11,7 @@ interface TrendingGridProps {
 
 const TrendingCard: React.FC<{ content: Content; index: number }> = ({ content, index }) => {
     const [isHovered, setIsHovered] = useState(false);
+    const [showVideoPlayer, setShowVideoPlayer] = useState(false);
 
     const formatNumber = (num?: number) => {
         if (!num) return '0';
@@ -23,6 +25,7 @@ const TrendingCard: React.FC<{ content: Content; index: number }> = ({ content, 
             className="group cursor-pointer"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
+            onClick={() => setShowVideoPlayer(true)}
         >
             <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-muted">
                 <img 
@@ -111,6 +114,32 @@ const TrendingCard: React.FC<{ content: Content; index: number }> = ({ content, 
                     </button>
                 </div>
             </div>
+            {showVideoPlayer && (
+                <YouTubeStyleVideoPlayer
+                    videoSrc={content.src || ''}
+                    videoData={{
+                        id: content.id,
+                        title: content.title,
+                        creator: content.creator,
+                        creatorAvatar: content.creatorAvatar || '/placeholder.svg',
+                        subscribers: content.subscribers || 0,
+                        views: content.views || 0,
+                        likes: content.likes || 0,
+                        dislikes: 0,
+                        uploadDate: content.uploadDate ? new Date(content.uploadDate) : new Date(),
+                        description: content.description || '',
+                        tags: content.tags || [],
+                        isSubscribed: false,
+                        isLiked: !!content.isLiked,
+                        isDisliked: false,
+                        isSaved: false
+                    }}
+                    onClose={() => setShowVideoPlayer(false)}
+                    contentId={content.id}
+                    isAdultContent={!!content.isAdult}
+                    requiresEntitlement={!!content.requiresEntitlement}
+                />
+            )}
         </div>
     );
 };

@@ -10,7 +10,8 @@ type FilterType = 'all' | 'recent' | 'popular';
 
 const FollowingPage: React.FC = () => {
     const [filter, setFilter] = useState<FilterType>('all');
-    const [showStories, setShowStories] = useState(true);
+    // hide stories by default so header stays compact like TikTok
+    const [showStories, setShowStories] = useState(false);
 
     // Mock creator stories (Instagram-style)
     const creatorStories = [
@@ -23,10 +24,10 @@ const FollowingPage: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-background">
-            {/* TikTok-style minimal header */}
-            <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b border-border">
-                <div className="flex items-center justify-between p-4">
-                    <h1 className="text-xl font-bold">Following</h1>
+            {/* Compact TikTok-style header (overlay) */}
+            <div className="sticky top-0 z-20 bg-transparent">
+                <div className="flex items-center justify-between py-2 px-3">
+                    <h1 className="text-base font-semibold">Following</h1>
                     <div className="flex items-center gap-2">
                         <Button variant="ghost" size="sm">
                             <Icon name="search" size={18} />
@@ -66,30 +67,25 @@ const FollowingPage: React.FC = () => {
                     </div>
                 )}
 
-                {/* TikTok-style filter tabs */}
-                <div className="flex items-center justify-center border-b border-border">
+                {/* Compact filter tabs (small pills) */}
+                <div className="flex items-center justify-center">
                     {(['all', 'recent', 'popular'] as FilterType[]).map((filterType) => (
                         <button
                             key={filterType}
                             onClick={() => setFilter(filterType)}
-                            className={`px-6 py-3 text-sm font-medium capitalize transition-colors relative ${
-                                filter === filterType 
-                                    ? 'text-primary' 
-                                    : 'text-muted-foreground hover:text-foreground'
+                            className={`mx-1 px-3 py-2 text-sm font-medium capitalize rounded-full transition-colors ${
+                                filter === filterType ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted/50'
                             }`}
                         >
                             {filterType}
-                            {filter === filterType && (
-                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
-                            )}
                         </button>
                     ))}
                 </div>
             </div>
 
-            {/* TikTok-style vertical feed */}
-            <div className="max-w-md mx-auto">
-                <VerticalFeed fetcher={fetchFollowing} />
+            {/* TikTok-style vertical feed (full-bleed) */}
+            <div className="w-full">
+                <VerticalFeed fetcher={fetchFollowing} compact />
             </div>
         </div>
     );

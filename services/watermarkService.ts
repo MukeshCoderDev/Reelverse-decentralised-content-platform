@@ -43,6 +43,17 @@ export interface WatermarkEmbedOptions {
 }
 
 export class WatermarkService {
+  private static instance: WatermarkService | null = null;
+
+  /**
+   * Backwards-compatible singleton accessor used by existing code/tests
+   */
+  public static getInstance(): WatermarkService {
+    if (!WatermarkService.instance) {
+      WatermarkService.instance = new WatermarkService();
+    }
+    return WatermarkService.instance;
+  }
   private readonly watermarkDatabase = new Map<string, ForensicWatermark>();
   private readonly extractionKeys = new Map<string, string>();
 

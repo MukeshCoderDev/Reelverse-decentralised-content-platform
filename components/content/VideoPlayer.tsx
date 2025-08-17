@@ -328,14 +328,22 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const toggleFullscreen = () => {
         const video = videoRef.current;
         if (!video) return;
+        // Prefer requesting fullscreen on a portal/modal container (if present)
+        // to avoid fullscreen being blocked by transformed ancestors.
+        const container = (video as HTMLElement).closest('.youtube-style-player-portal') as HTMLElement | null || video.parentElement;
 
         if (!isFullscreen) {
-            if (video.requestFullscreen) {
-                video.requestFullscreen();
+            if (container && container.requestFullscreen) {
+                container.requestFullscreen().catch(() => {
+                    // Fallback to video element if container request fails
+                    if (video.requestFullscreen) video.requestFullscreen().catch(() => {});
+                });
+            } else if (video.requestFullscreen) {
+                video.requestFullscreen().catch(() => {});
             }
         } else {
             if (document.exitFullscreen) {
-                document.exitFullscreen();
+                document.exitFullscreen().catch(() => {});
             }
         }
         setIsFullscreen(!isFullscreen);

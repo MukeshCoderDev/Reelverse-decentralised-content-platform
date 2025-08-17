@@ -1,29 +1,18 @@
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { EmptyState } from '../shared/EmptyState';
 import { Content } from '../../types';
 import Icon from '../Icon';
 import Button from '../Button';
+import { YouTubeStyleVideoPlayer } from '../content/YouTubeStyleVideoPlayer';
 
 interface VerticalFeedProps {
     fetcher: () => Promise<Content[]>;
+    compact?: boolean; // when true, render full-bleed, h-screen cards (TikTok-like)
 }
 
-const TikTokStyleCard: React.FC<{ content: Content; isActive?: boolean }> = ({ content, isActive = false }) => {
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [showControls, setShowControls] = useState(false);
-
-    const togglePlay = () => {
-        if (videoRef.current) {
-            if (isPlaying) {
-                videoRef.current.pause();
-            } else {
-                videoRef.current.play();
-            }
-            setIsPlaying(!isPlaying);
-        }
-    };
+const TikTokStyleCard: React.FC<{ content: Content; isActive?: boolean; compact?: boolean }> = ({ content, isActive = false, compact = false }) => {
+    const [showVideoPlayer, setShowVideoPlayer] = useState(false);
 
     const formatNumber = (num?: number) => {
         if (!num) return '0';
@@ -33,7 +22,10 @@ const TikTokStyleCard: React.FC<{ content: Content; isActive?: boolean }> = ({ c
     };
 
     return (
-        <div className="relative w-full h-screen max-h-[80vh] bg-black rounded-2xl overflow-hidden group">
+        <div
+            className={`relative w-full ${compact ? 'h-screen max-h-none rounded-none' : 'h-screen max-h-[80vh] rounded-2xl'} bg-black overflow-hidden group`}
+            onClick={() => setShowVideoPlayer(true)}
+        >
             {/* Video/Image Content */}
             <div className="relative w-full h-full">
                 {content.thumbnail ? (
@@ -46,7 +38,7 @@ const TikTokStyleCard: React.FC<{ content: Content; isActive?: boolean }> = ({ c
                         {/* Play button overlay */}
                         <div 
                             className="absolute inset-0 flex items-center justify-center cursor-pointer"
-                            onClick={togglePlay}
+                            onClick={(e) => { e.stopPropagation(); setShowVideoPlayer(true); }}
                         >
                             <div className="w-16 h-16 bg-black/50 rounded-full flex items-center justify-center backdrop-blur-sm">
                                 <Icon name="play" size={24} className="text-white ml-1" />
@@ -62,9 +54,34 @@ const TikTokStyleCard: React.FC<{ content: Content; isActive?: boolean }> = ({ c
                 {/* TikTok-style gradient overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
             </div>
+            {/* Open the YouTube-style player modal when requested */}
+            {showVideoPlayer && (
+                <YouTubeStyleVideoPlayer
+                    videoSrc={"https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4"}
+                    videoData={{
+                        id: content.id,
+                        title: content.title,
+                        creator: content.creator,
+                        creatorAvatar: '/placeholder.svg',
+                        subscribers: Math.floor(Math.random() * 100000) + 1000,
+                        views: parseInt((content.views || '0').replace(/[^\d]/g, '')) || Math.floor(Math.random() * 1000000),
+                        likes: content.likes || Math.floor(Math.random() * 50000),
+                        dislikes: 0,
+                        uploadDate: new Date(),
+                        description: content.title,
+                        tags: [] as string[],
+                        isSubscribed: false,
+                        isLiked: false,
+                        isDisliked: false,
+                        isSaved: false
+                    }}
+                    onClose={() => setShowVideoPlayer(false)}
+                    contentId={content.id}
+                />
+            )}
 
             {/* Content Info - Bottom Left */}
-            <div className="absolute bottom-0 left-0 right-16 p-4 text-white">
+            <div className={`absolute bottom-0 left-0 ${compact ? 'right-0' : 'right-16'} p-4 text-white`}>
                 <div className="space-y-2">
                     <div className="flex items-center gap-2">
                         <img 
@@ -96,29 +113,26 @@ const TikTokStyleCard: React.FC<{ content: Content; isActive?: boolean }> = ({ c
             </div>
 
             {/* TikTok-style Action Buttons - Right Side */}
-            <div className="absolute right-4 bottom-20 flex flex-col items-center gap-6">
-                <button className="flex flex-col items-center gap-1 text-white">
+                <div className={`absolute ${compact ? 'right-3 bottom-28' : 'right-4 bottom-20'} flex flex-col items-center gap-6`}>
+                <button className="flex flex-col items-center gap-1 text-white" onClick={(e) => e.stopPropagation()}>
                     <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm hover:bg-white/30 transition-colors">
                         <Icon name="heart" size={20} />
                     </div>
                     <span className="text-xs">{formatNumber(content.likes)}</span>
                 </button>
-
-                <button className="flex flex-col items-center gap-1 text-white">
+                <button className="flex flex-col items-center gap-1 text-white" onClick={(e) => e.stopPropagation()}>
                     <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm hover:bg-white/30 transition-colors">
                         <Icon name="message-circle" size={20} />
                     </div>
                     <span className="text-xs">{formatNumber(content.comments)}</span>
                 </button>
-
-                <button className="flex flex-col items-center gap-1 text-white">
+                <button className="flex flex-col items-center gap-1 text-white" onClick={(e) => e.stopPropagation()}>
                     <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm hover:bg-white/30 transition-colors">
                         <Icon name="share" size={20} />
                     </div>
                     <span className="text-xs">{formatNumber(content.shares)}</span>
                 </button>
-
-                <button className="flex flex-col items-center gap-1 text-white">
+                <button className="flex flex-col items-center gap-1 text-white" onClick={(e) => e.stopPropagation()}>
                     <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm hover:bg-white/30 transition-colors">
                         <Icon name="star" size={20} />
                     </div>
@@ -139,7 +153,7 @@ const TikTokStyleCard: React.FC<{ content: Content; isActive?: boolean }> = ({ c
     );
 };
 
-export function VerticalFeed({ fetcher }: VerticalFeedProps) {
+export function VerticalFeed({ fetcher, compact = false }: VerticalFeedProps) {
     const [items, setItems] = useState<Content[] | null>(null);
     const [loading, setLoading] = useState(true);
     
@@ -172,12 +186,13 @@ export function VerticalFeed({ fetcher }: VerticalFeedProps) {
     }
         
     return (
-        <div className="space-y-4 p-4">
+        <div className={`${compact ? '' : 'space-y-4 p-4'}`}>
             {items.map((item, i) => (
                 <TikTokStyleCard 
                     key={`${item.id}-${i}`} 
                     content={item}
                     isActive={i === 0}
+                    compact={compact}
                 />
             ))}
             
