@@ -5,14 +5,16 @@ import creditsService from '../../services/credits/pgCreditsService';
 import { FxSnapshot } from '../../services/credits/types';
 import { getDatabase } from '../config/database';
 import crypto from 'crypto';
+import metrics, { holdsCreated, settleDebits, rateLimitHits, idempotencyPersistenceFailures, preauthLatency, settleLatency } from '../utils/metrics';
 
 const router = express.Router();
 const redis = RedisService.getInstance();
 
 // POST /preauth { orgId, holdId, estGasWei, ... }
 router.post('/preauth', async (req: Request, res: Response) => {
-  const idempotencyKey = req.header('x-idempotency-key');
+  const idempotencyKey = req.header('x-idempotency-key') || req.idempotencyKey;
   const signature = req.header('x-signature');
+  const correlationId = req.correlationId || req.header('x-correlation-id');
   const { orgId, holdId, estGasWei, maxFeePerGasWei, maxPriorityFeePerGasWei, method, paramsHash, expiresAt } = req.body as any;
   if (!idempotencyKey) return res.status(400).json({ error: 'Missing X-Idempotency-Key' });
   if (!orgId || !holdId || !estGasWei) return res.status(400).json({ error: 'orgId, holdId, estGasWei required' });
@@ -33,6 +35,7 @@ router.post('/preauth', async (req: Request, res: Response) => {
   const rateKey = `rate:preauth:${orgId}`;
   const allowed = await redis.incrementRateLimit(rateKey, 24 * 3600);
   if (allowed > 100) {
+    await rateLimitHits.inc();
     return res.status(429).set('Retry-After', '3600').json({ error: 'RATE_LIMITED' });
   }
 
@@ -58,14 +61,19 @@ router.post('/preauth', async (req: Request, res: Response) => {
   // Acquire short lock per approval to avoid races across replicas
   const lockKey = `paymaster:approval:${holdId}`;
   const got = await redis.acquireLock(lockKey, 30);
-  if (!got) return res.status(429).set('Retry-After', '3').json({ error: 'RATE_LIMITED' });
+  if (!got) {
+    await rateLimitHits.inc();
+    return res.status(429).set('Retry-After', '3').json({ error: 'RATE_LIMITED' });
+  }
 
   try {
+    const timer = preauthLatency.startTimer();
     // re-check idempotency in DB (race-safe)
     const pool = getDatabase();
     const existing2 = await pool.query(`SELECT response_json, status_code FROM idempotency_keys WHERE key=$1 LIMIT 1`, [idempotencyKey]);
     if (existing2.rowCount > 0) {
       const r = existing2.rows[0];
+      timer();
       return res.status(r.status_code || 200).json(r.response_json);
     }
 
@@ -73,13 +81,20 @@ router.post('/preauth', async (req: Request, res: Response) => {
 
     const resp = { approvalId: holdId, creditsHoldCents: holdCents, expiresAt };
     try {
-      const pool = getDatabase();
-      await pool.query(`INSERT INTO idempotency_keys(key, method, org_id, body_hash, response_json, status_code, expires_at) VALUES($1,$2,$3,$4,$5,$6, now() + interval '1 day') ON CONFLICT (key) DO NOTHING`, [idempotencyKey, 'POST /paymaster/preauth', orgId, null, JSON.stringify(resp), 200]);
+      const pool2 = getDatabase();
+      await pool2.query(`INSERT INTO idempotency_keys(key, method, org_id, body_hash, response_json, status_code, expires_at) VALUES($1,$2,$3,$4,$5,$6, now() + interval '1 day') ON CONFLICT (key) DO NOTHING`, [idempotencyKey, 'POST /paymaster/preauth', orgId, null, JSON.stringify(resp), 200]);
     } catch (e) {
-      // best-effort idempotency persistence
+      // if strict mode is enabled, fail fast and surface metric
+      if (process.env.IDEMPOTENCY_STRICT === 'true') {
+        await idempotencyPersistenceFailures.inc();
+        throw e;
+      }
+      // otherwise best-effort
+      await idempotencyPersistenceFailures.inc();
     }
 
-    await redis.incrementCounter('paymaster_holds_total');
+    await holdsCreated.inc();
+    timer();
     return res.status(200).json(resp);
   } catch (err: any) {
     if ((err.message || '').includes('INSUFFICIENT')) return res.status(409).json({ error: 'INSUFFICIENT_CREDITS' });
@@ -91,8 +106,9 @@ router.post('/preauth', async (req: Request, res: Response) => {
 
 // POST /settle { orgId, holdId, capture }
 router.post('/settle', async (req: Request, res: Response) => {
-  const idempotencyKey = req.header('x-idempotency-key');
+  const idempotencyKey = req.header('x-idempotency-key') || req.idempotencyKey;
   const signature = req.header('x-signature');
+  const correlationId = req.correlationId || req.header('x-correlation-id');
   const { approvalId, txHash, gasUsedWei, effectiveGasPriceWei } = req.body as any;
   if (!idempotencyKey) return res.status(400).json({ error: 'Missing X-Idempotency-Key' });
   if (!approvalId || !txHash || !gasUsedWei || !effectiveGasPriceWei) return res.status(400).json({ error: 'approvalId, txHash, gasUsedWei, effectiveGasPriceWei required' });
@@ -112,7 +128,10 @@ router.post('/settle', async (req: Request, res: Response) => {
   // Acquire lock on approvalId
   const lockKey = `paymaster:approval:${approvalId}`;
   const got = await redis.acquireLock(lockKey, 30);
-  if (!got) return res.status(429).set('Retry-After', '3').json({ error: 'RATE_LIMITED' });
+  if (!got) {
+    await rateLimitHits.inc();
+    return res.status(429).set('Retry-After', '3').json({ error: 'RATE_LIMITED' });
+  }
 
   const pool = getDatabase();
   const client = await pool.connect();
@@ -133,7 +152,9 @@ router.post('/settle', async (req: Request, res: Response) => {
     // check expiry
     if (hold.expires_at && new Date(hold.expires_at) < new Date()) { await client.query('ROLLBACK');
       // persist idempotency as expired response
-      try { await pool.query(`INSERT INTO idempotency_keys(key, method, org_id, body_hash, response_json, status_code, expires_at) VALUES($1,$2,$3,$4,$5,$6, now() + interval '1 day') ON CONFLICT (key) DO NOTHING`, [idempotencyKey, 'POST /paymaster/settle', hold.org_id, null, JSON.stringify({ error: 'PREAUTH_EXPIRED' }), 409]); } catch(e){}
+      try { await pool.query(`INSERT INTO idempotency_keys(key, method, org_id, body_hash, response_json, status_code, expires_at) VALUES($1,$2,$3,$4,$5,$6, now() + interval '1 day') ON CONFLICT (key) DO NOTHING`, [idempotencyKey, 'POST /paymaster/settle', hold.org_id, null, JSON.stringify({ error: 'PREAUTH_EXPIRED' }), 409]); } catch(e){
+        if (process.env.IDEMPOTENCY_STRICT === 'true') { await idempotencyPersistenceFailures.inc(); throw e; } else { await idempotencyPersistenceFailures.inc(); }
+      }
       return res.status(409).json({ error: 'PREAUTH_EXPIRED' }); }
 
   // compute actual cents
@@ -155,7 +176,7 @@ router.post('/settle', async (req: Request, res: Response) => {
       await client.query(`UPDATE credit_accounts SET daily_gas_spend_cents = 0, spend_window_start = now() WHERE org_id=$1`, [hold.org_id]);
     }
     if (cap > 0 && (spend + actualCents) > cap) { await client.query('ROLLBACK');
-      try { await pool.query(`INSERT INTO idempotency_keys(key, method, org_id, body_hash, response_json, status_code, expires_at) VALUES($1,$2,$3,$4,$5,$6, now() + interval '1 day') ON CONFLICT (key) DO NOTHING`, [idempotencyKey, 'POST /paymaster/settle', hold.org_id, null, JSON.stringify({ error: 'DAILY_GAS_CAP_EXCEEDED' }), 409]); } catch(e){}
+      try { await pool.query(`INSERT INTO idempotency_keys(key, method, org_id, body_hash, response_json, status_code, expires_at) VALUES($1,$2,$3,$4,$5,$6, now() + interval '1 day') ON CONFLICT (key) DO NOTHING`, [idempotencyKey, 'POST /paymaster/settle', hold.org_id, null, JSON.stringify({ error: 'DAILY_GAS_CAP_EXCEEDED' }), 409]); } catch(e){ if (process.env.IDEMPOTENCY_STRICT === 'true') { await idempotencyPersistenceFailures.inc(); throw e; } else { await idempotencyPersistenceFailures.inc(); } }
       return res.status(409).json({ error: 'DAILY_GAS_CAP_EXCEEDED' }); }
 
     // if a debit transaction already exists for this approvalId, return it (idempotent settle)
@@ -164,8 +185,8 @@ router.post('/settle', async (req: Request, res: Response) => {
       const row = existingDebit.rows[0];
       await client.query('COMMIT');
       const respCached = { txnId: row.id, debitedCents: Math.abs(Number(row.amount_cents)) };
-      try { await pool.query(`INSERT INTO idempotency_keys(key, method, org_id, body_hash, response_json, status_code, expires_at) VALUES($1,$2,$3,$4,$5,$6, now() + interval '1 day') ON CONFLICT (key) DO NOTHING`, [idempotencyKey, 'POST /paymaster/settle', hold.org_id, null, JSON.stringify(respCached), 200]); } catch(e){}
-      await redis.incrementCounter('paymaster_settles_total');
+      try { await pool.query(`INSERT INTO idempotency_keys(key, method, org_id, body_hash, response_json, status_code, expires_at) VALUES($1,$2,$3,$4,$5,$6, now() + interval '1 day') ON CONFLICT (key) DO NOTHING`, [idempotencyKey, 'POST /paymaster/settle', hold.org_id, null, JSON.stringify(respCached), 200]); } catch(e){ if (process.env.IDEMPOTENCY_STRICT === 'true') { await idempotencyPersistenceFailures.inc(); throw e; } else { await idempotencyPersistenceFailures.inc(); } }
+      await settleDebits.inc();
       return res.status(200).json(respCached);
     }
 
@@ -177,11 +198,13 @@ router.post('/settle', async (req: Request, res: Response) => {
 
     await client.query('COMMIT');
 
-    const resp = { txnId: txId, debitedCents: actualCents };
-    try { await pool.query(`INSERT INTO idempotency_keys(key, method, org_id, body_hash, response_json, status_code, expires_at) VALUES($1,$2,$3,$4,$5,$6, now() + interval '1 day') ON CONFLICT (key) DO NOTHING`, [idempotencyKey, 'POST /paymaster/settle', hold.org_id, null, JSON.stringify(resp), 200]); } catch(e){}
+  const timer = settleLatency.startTimer();
+  const resp = { txnId: txId, debitedCents: actualCents };
+  try { await pool.query(`INSERT INTO idempotency_keys(key, method, org_id, body_hash, response_json, status_code, expires_at) VALUES($1,$2,$3,$4,$5,$6, now() + interval '1 day') ON CONFLICT (key) DO NOTHING`, [idempotencyKey, 'POST /paymaster/settle', hold.org_id, null, JSON.stringify(resp), 200]); } catch(e){ if (process.env.IDEMPOTENCY_STRICT === 'true') { await idempotencyPersistenceFailures.inc(); throw e; } else { await idempotencyPersistenceFailures.inc(); } }
 
-    await redis.incrementCounter('paymaster_settles_total');
-    return res.status(200).json(resp);
+  await settleDebits.inc();
+  timer();
+  return res.status(200).json(resp);
   } catch (err: any) {
     try { await client.query('ROLLBACK'); } catch(e){}
     return res.status(500).json({ error: err.message || 'settle failed' });

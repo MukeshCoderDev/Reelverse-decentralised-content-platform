@@ -52,6 +52,7 @@
     "uuid": "^9.0.1",
     "viem": "^2.7.15",
     "wagmi": "^2.5.7"
+  ,"prom-client": "^14.0.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",

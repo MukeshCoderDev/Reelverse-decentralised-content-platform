@@ -83,6 +83,13 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+// Allow idempotency and correlation headers from clients
+import { Request, Response, NextFunction } from 'express';
+
+app.use((req: Request, res: Response, next: NextFunction) => {
+  res.setHeader('Access-Control-Expose-Headers', 'X-Idempotency-Key, X-Correlation-ID');
+  next();
+});
 
 // Rate limiting
 const limiter = rateLimit({
@@ -116,7 +123,7 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 // Health check endpoint
-app.get('/health', async (req, res) => {
+app.get('/health', async (req: Request, res: Response) => {
   try {
     const aiHealth = await aiServiceManager.healthCheck();
     const infraHealth = await infrastructure.healthCheck();
@@ -144,7 +151,7 @@ app.get('/health', async (req, res) => {
 });
 
 // Metrics endpoint
-app.get('/metrics', async (req, res) => {
+app.get('/metrics', async (req: Request, res: Response) => {
   try {
     res.set('Content-Type', metricsRegister.contentType);
     res.end(await metricsRegister.metrics());
