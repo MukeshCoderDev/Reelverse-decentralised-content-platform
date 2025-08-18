@@ -1,9 +1,12 @@
-import { createClient, RedisClientType } from 'redis';
+// Use require to avoid mismatched redis typings in this mono-repo snapshot
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { createClient } = require('redis');
+import * as crypto from 'crypto';
 import { logger } from '../utils/logger';
 
-let redisClient: RedisClientType;
+let redisClient: any;
 
-export async function connectRedis(): Promise<RedisClientType> {
+export async function connectRedis(): Promise<any> {
   try {
     const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
     
@@ -44,7 +47,7 @@ export async function connectRedis(): Promise<RedisClientType> {
   }
 }
 
-export function getRedis(): RedisClientType {
+export function getRedis(): any {
   if (!redisClient) {
     throw new Error('Redis not initialized. Call connectRedis() first.');
   }
@@ -60,7 +63,7 @@ export async function closeRedis(): Promise<void> {
 
 // Redis utility functions
 export class RedisService {
-  private client: RedisClientType;
+  private client: any;
 
   constructor() {
     this.client = getRedis();
@@ -141,15 +144,32 @@ export class RedisService {
   }
 
   // Lock mechanism for critical sections
-  async acquireLock(lockKey: string, ttl: number = 30): Promise<boolean> {
-    const result = await this.client.set(`lock:${lockKey}`, '1', {
+  // Token-based Lock mechanism for critical sections
+  // Returns a token string when acquired, null otherwise
+  async acquireLockToken(lockKey: string, ttl: number = 30): Promise<string | null> {
+    const token = crypto.randomUUID();
+    const result = await this.client.set(`lock:${lockKey}`, token, {
       NX: true,
       EX: ttl
     });
-    return result === 'OK';
+    return result === 'OK' ? token : null;
+  }
+
+  // Release lock only if token matches (Lua script)
+  async releaseLockToken(lockKey: string, token: string): Promise<boolean> {
+    const lua = `if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end`;
+    const res = await this.client.eval(lua, { keys: [`lock:${lockKey}`], arguments: [token] });
+    return res === 1;
+  }
+
+  // Backwards-compatible helpers
+  async acquireLock(lockKey: string, ttl: number = 30): Promise<boolean> {
+    const token = await this.acquireLockToken(lockKey, ttl);
+    return token !== null;
   }
 
   async releaseLock(lockKey: string): Promise<void> {
+    // best-effort: delete even without token (fallback)
     await this.client.del(`lock:${lockKey}`);
   }
 

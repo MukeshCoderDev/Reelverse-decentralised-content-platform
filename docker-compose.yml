@@ -143,6 +143,23 @@ services:
       - api
     restart: unless-stopped
 
+  # One-off idempotency sweep (run manually or schedule externally)
+  sweep-idempotency:
+    image: node:20-alpine
+    container_name: reelverse-sweep-idempotency
+    working_dir: /app
+    volumes:
+      - ./api:/app
+    command: sh -lc "npm install --no-audit --no-fund --prefix /app && npx ts-node src/scripts/sweepIdempotency.ts"
+    environment:
+      DATABASE_URL: postgresql://reelverse:reelverse_password@postgres:5432/reelverse_db
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+    depends_on:
+      - postgres
+    networks:
+      - reelverse-network
+
 volumes:
   postgres_data:
     driver: local

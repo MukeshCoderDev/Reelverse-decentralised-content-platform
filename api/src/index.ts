@@ -21,6 +21,8 @@ import { infrastructure } from './core/infrastructure';
 import { eventBus } from './core/eventBus';
 import { auditSink } from './core/auditSink';
 import metricsRegister from './utils/metrics';
+import RelayerService from './services/onchain/relayerService';
+import RelayerWorker from './services/onchain/relayerWorker';
 
 // Import routes
 import authRoutes from './routes/auth';
@@ -50,6 +52,8 @@ import policyRoutes from './routes/policy';
 import paymasterRoutes from './routes/paymaster';
 import finalizerRoutes from './routes/finalizer';
 import coordinatorRoutes from './routes/coordinator';
+import smartAccountsAdmin from './routes/admin/smartAccounts';
+import reconcilerAdmin from './routes/admin/reconciler';
 
 // Load environment variables
 dotenv.config();
@@ -188,6 +192,8 @@ app.use(`/api/${API_VERSION}/policy`, policyRoutes);
 app.use(`/api/${API_VERSION}/paymaster`, paymasterRoutes);
 app.use(`/api/${API_VERSION}/finalizer`, finalizerRoutes);
 app.use(`/api/${API_VERSION}/coordinator`, coordinatorRoutes);
+app.use(`/api/${API_VERSION}/admin/smart-accounts`, smartAccountsAdmin);
+app.use(`/api/${API_VERSION}/admin/reconciler`, reconcilerAdmin);
 
 // Error handling middleware
 app.use(notFoundHandler);
@@ -222,6 +228,19 @@ async function startServer() {
     // Connect to Redis
     await connectRedis();
     logger.info('Redis connected successfully');
+
+    // Optionally start relayer worker
+    if (process.env.RELAYER_ENABLED === 'true') {
+      try {
+        const rpc = process.env.RPC_URL || 'http://localhost:8545';
+        const relayer = new RelayerService({ rpcUrl: rpc, apiBaseUrl: `http://localhost:${PORT}` });
+        const worker = new RelayerWorker(relayer, Number(process.env.RELAYER_POLL_MS || '5000'));
+        worker.start().catch(e => logger.error('Relayer worker failed', e));
+        logger.info('Relayer worker started');
+      } catch (e) {
+        logger.error('Failed to start relayer worker', e);
+      }
+    }
 
     // Initialize AI services
     await aiServiceManager.initialize();

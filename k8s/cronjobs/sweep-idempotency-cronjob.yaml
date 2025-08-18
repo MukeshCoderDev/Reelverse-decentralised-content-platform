@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sweep-idempotency
+  namespace: default
+spec:
+  schedule: "0 2 * * *" # daily at 02:00 UTC
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: sweep-idempotency
+              image: node:20-alpine
+              workingDir: /app
+              command:
+                - sh
+                - -c
+                - |
+                  cd /app && npm ci --no-audit --no-fund && npx ts-node src/scripts/sweepIdempotency.ts
+              env:
+                - name: DATABASE_URL
+                  value: "postgresql://reelverse:reelverse_password@postgres:5432/reelverse_db"
+                - name: REDIS_URL
+                  value: "redis://redis:6379"
+          volumes:
+            - name: app-src
+              hostPath:
+                path: /opt/app
+                type: Directory
+          volumeMounts:
+            - name: app-src
+              mountPath: /app
+*** End Patch

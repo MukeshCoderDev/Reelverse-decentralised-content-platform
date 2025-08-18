@@ -143,6 +143,8 @@ export const correlationIdMiddleware = (req: Request, res: Response, next: NextF
   const correlationId = req.headers['x-correlation-id'] as string || uuidv4();
   req.correlationId = correlationId;
   res.setHeader('X-Correlation-ID', correlationId);
+  // expose metrics labels for instrumentation
+  (res.locals as any).metricsLabels = { correlationId };
   next();
 };
 
