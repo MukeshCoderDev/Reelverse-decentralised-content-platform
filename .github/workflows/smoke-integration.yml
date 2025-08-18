@@ -1,0 +1,64 @@
+name: Smoke Integration Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    env:
+      PAYMASTER_HMAC_SECRET: test_secret
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: reelverse
+          POSTGRES_PASSWORD: reelverse
+          POSTGRES_DB: reelverse_test
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U reelverse" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 63790:6379
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies (ci)
+        run: npm ci
+
+      - name: Wait for services
+        run: |
+          echo "Waiting for Postgres and Redis to be healthy..."
+          for i in {1..20}; do
+            pg_isready -h localhost -p 55432 -U reelverse && redis-cli -p 63790 ping && break || sleep 3
+          done
+
+      - name: Run smoke integration script
+        env:
+          PGHOST: localhost
+          PGPORT: 55432
+          PGUSER: reelverse
+          PGPASSWORD: reelverse
+          PGDATABASE: reelverse_test
+          REDIS_URL: redis://localhost:63790
+        run: node scripts/smoke_integration_test.js | tee smoke.log
+
+      - name: Upload logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-logs
+          path: smoke.log

@@ -20,6 +20,7 @@ import { aiServiceManager } from './services/ai/aiServiceManager';
 import { infrastructure } from './core/infrastructure';
 import { eventBus } from './core/eventBus';
 import { auditSink } from './core/auditSink';
+import metricsRegister from './utils/metrics';
 
 // Import routes
 import authRoutes from './routes/auth';
@@ -46,6 +47,9 @@ import privacyRoutes from './routes/privacy';
 import paymentComplianceRoutes from './routes/paymentCompliance';
 import aiGovernanceRoutes from './routes/aiGovernance';
 import policyRoutes from './routes/policy';
+import paymasterRoutes from './routes/paymaster';
+import finalizerRoutes from './routes/finalizer';
+import coordinatorRoutes from './routes/coordinator';
 
 // Load environment variables
 dotenv.config();
@@ -139,6 +143,16 @@ app.get('/health', async (req, res) => {
   }
 });
 
+// Metrics endpoint
+app.get('/metrics', async (req, res) => {
+  try {
+    res.set('Content-Type', metricsRegister.contentType);
+    res.end(await metricsRegister.metrics());
+  } catch (err) {
+    res.status(500).send('metrics error');
+  }
+});
+
 // API routes
 app.use(`/api/${API_VERSION}/auth`, authRoutes);
 app.use(`/api/${API_VERSION}/content`, contentRoutes);
@@ -164,6 +178,9 @@ app.use(`/api/${API_VERSION}/privacy`, privacyRoutes);
 app.use(`/api/${API_VERSION}/payment-compliance`, paymentComplianceRoutes);
 app.use(`/api/${API_VERSION}/ai-governance`, aiGovernanceRoutes);
 app.use(`/api/${API_VERSION}/policy`, policyRoutes);
+app.use(`/api/${API_VERSION}/paymaster`, paymasterRoutes);
+app.use(`/api/${API_VERSION}/finalizer`, finalizerRoutes);
+app.use(`/api/${API_VERSION}/coordinator`, coordinatorRoutes);
 
 // Error handling middleware
 app.use(notFoundHandler);

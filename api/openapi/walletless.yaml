@@ -1,0 +1,37 @@
+openapi: 3.0.0
+info:
+  title: Reelverse Walletless API
+  version: 1.0.0
+paths:
+  /api/v1/credits/topup:
+    post:
+      summary: Top up org credits
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [orgId, amountCents]
+              properties:
+                orgId: { type: string }
+                amountCents: { type: integer }
+                provider: { type: string }
+                providerRef: { type: string }
+      responses:
+        '200': { description: Transaction }
+  /api/v1/credits/debit:
+    post:
+      summary: Debit org credits
+  /api/v1/credits/balance:
+    get:
+      summary: Get org balance
+  /api/v1/paymaster/preauthorize:
+    post:
+      summary: Preauthorize a sponsored tx
+  /api/v1/paymaster/settle:
+    post:
+      summary: Settle a sponsored tx
+  /api/v1/batch/queue:
+    post:
+      summary: Queue items for batch finalizer
