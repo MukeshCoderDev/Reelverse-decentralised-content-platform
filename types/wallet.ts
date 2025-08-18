@@ -11,6 +11,8 @@ export enum WalletType {
 
 export enum SupportedChainId {
   ETHEREUM = 1,
+  SEPOLIA = 11155111,
+  LOCALHOST = 31337,
   POLYGON = 137,
   BNB_CHAIN = 56,
   ARBITRUM = 42161,

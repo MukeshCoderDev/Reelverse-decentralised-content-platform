@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useWallet } from '../../contexts/WalletContext';
 import { WalletUtils } from '../../utils/walletUtils';
 import { WalletConnectModal } from './WalletConnectModal';
+import { NetworkSelector } from './NetworkSelector';
 import Button from '../Button';
 import Icon from '../Icon';
 
@@ -82,18 +83,20 @@ export const WalletButton: React.FC<WalletButtonProps> = ({
   // Connected state
   if (isConnected && account) {
     return (
-      <div className="relative">
+      <div className="relative flex items-center gap-2">
+        {/* Network Selector - Shows multi-chain options */}
+        <NetworkSelector 
+          variant="outline" 
+          size={size} 
+          showLabel={false}
+        />
+        
         <Button
           variant={variant}
           size={size}
           onClick={() => setShowDropdown(!showDropdown)}
           className={`${className || ''} min-w-0`}
         >
-          {/* Network indicator */}
-          <div className={`w-4 h-4 rounded-full bg-gradient-to-br ${getNetworkColor()} flex items-center justify-center mr-2 text-xs`}>
-            {getNetworkIcon()}
-          </div>
-          
           {/* Wallet info */}
           <div className="flex items-center gap-2 min-w-0">
             <span className="font-mono text-sm truncate">

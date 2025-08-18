@@ -140,6 +140,11 @@ export const NetworkSelector: React.FC<NetworkSelectorProps> = ({
                             Mainnet
                           </span>
                         )}
+                        {networkStatus.isTestnet && (
+                          <span className="px-1.5 py-0.5 text-xs bg-blue-500/20 text-blue-500 rounded">
+                            {network.chainId === 31337 ? 'Local' : 'Testnet'}
+                          </span>
+                        )}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {network.symbol} • Chain ID: {network.chainId}
@@ -166,10 +171,11 @@ export const NetworkSelector: React.FC<NetworkSelectorProps> = ({
               <div className="flex items-start gap-2">
                 <Icon name="info" size={14} className="text-blue-500 mt-0.5 flex-shrink-0" />
                 <div className="text-xs text-muted-foreground">
-                  <p className="font-medium text-blue-500 mb-1">Network Switching</p>
+                  <p className="font-medium text-blue-500 mb-1">Development Networks</p>
                   <p>
-                    Some networks may require adding to your wallet first. 
-                    We'll guide you through the process.
+                    🏠 <strong>Localhost</strong>: For Hardhat/Ganache local testing<br/>
+                    🧪 <strong>Sepolia</strong>: Ethereum testnet with free ETH<br/>
+                    Other networks may require adding to your wallet first.
                   </p>
                 </div>
               </div>

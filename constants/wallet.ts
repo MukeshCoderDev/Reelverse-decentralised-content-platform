@@ -12,6 +12,26 @@ export const NETWORK_CONFIGS: Record<number, NetworkConfig> = {
     iconUrl: '🔷',
     color: 'from-blue-400 to-blue-600'
   },
+  [SupportedChainId.SEPOLIA]: {
+    chainId: 11155111,
+    name: 'Sepolia Testnet',
+    symbol: 'ETH',
+    decimals: 18,
+    rpcUrl: 'https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
+    blockExplorerUrl: 'https://sepolia.etherscan.io',
+    iconUrl: '🧪',
+    color: 'from-green-400 to-blue-500'
+  },
+  [SupportedChainId.LOCALHOST]: {
+    chainId: 31337,
+    name: 'Localhost',
+    symbol: 'ETH',
+    decimals: 18,
+    rpcUrl: 'http://127.0.0.1:8545',
+    blockExplorerUrl: 'http://localhost:8545',
+    iconUrl: '🏠',
+    color: 'from-gray-400 to-gray-600'
+  },
   [SupportedChainId.POLYGON]: {
     chainId: 137,
     name: 'Polygon',
@@ -118,8 +138,25 @@ export const STORAGE_KEYS = {
   AUTO_CONNECT: 'reelverse_auto_connect'
 } as const;
 
-// Default network (Ethereum mainnet)
-export const DEFAULT_CHAIN_ID = SupportedChainId.ETHEREUM;
+// Default network based on environment
+export const DEFAULT_CHAIN_ID = (() => {
+  // Check if we're in development mode
+  const isDevelopment = import.meta.env?.MODE === 'development' || 
+                       typeof window !== 'undefined' && window.location.hostname === 'localhost';
+  
+  // For localhost development, default to localhost network
+  if (isDevelopment && window?.location?.hostname === 'localhost') {
+    return SupportedChainId.LOCALHOST;
+  }
+  
+  // For other development, use Sepolia testnet
+  if (isDevelopment) {
+    return SupportedChainId.SEPOLIA;
+  }
+  
+  // For production, use Ethereum mainnet
+  return SupportedChainId.ETHEREUM;
+})();
 
 // Supported wallet types array for iteration
 export const SUPPORTED_WALLETS = Object.values(WalletType);
@@ -128,3 +165,25 @@ export const SUPPORTED_WALLETS = Object.values(WalletType);
 export const SUPPORTED_CHAIN_IDS = Object.values(SupportedChainId).filter(
   (value): value is number => typeof value === 'number'
 );
+
+// Development helper functions
+export const isDevelopment = () => {
+  return import.meta.env?.MODE === 'development' || 
+         typeof window !== 'undefined' && window.location.hostname === 'localhost';
+};
+
+export const isLocalhost = () => {
+  return typeof window !== 'undefined' && 
+         (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+};
+
+// Get recommended network for current environment
+export const getRecommendedNetwork = (): SupportedChainId => {
+  if (isLocalhost()) {
+    return SupportedChainId.LOCALHOST;
+  }
+  if (isDevelopment()) {
+    return SupportedChainId.SEPOLIA;
+  }
+  return SupportedChainId.ETHEREUM;
+};

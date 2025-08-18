@@ -154,8 +154,9 @@ export class NetworkService {
    */
   requiresNetworkAddition(chainId: number): boolean {
     // Most wallets have Ethereum mainnet by default
-    // Other networks typically need to be added
-    return chainId !== SupportedChainId.ETHEREUM;
+    // Localhost and testnets typically need to be added
+    const defaultNetworks = [SupportedChainId.ETHEREUM];
+    return !defaultNetworks.includes(chainId as SupportedChainId);
   }
 
   /**
@@ -176,11 +177,16 @@ export class NetworkService {
       SupportedChainId.OPTIMISM,
       SupportedChainId.AVALANCHE
     ].includes(chainId as SupportedChainId);
+    
+    const isTestnet = [
+      SupportedChainId.SEPOLIA,
+      SupportedChainId.LOCALHOST
+    ].includes(chainId as SupportedChainId);
 
     return {
       isSupported,
       isMainnet,
-      isTestnet: !isMainnet && isSupported,
+      isTestnet,
       requiresAddition: this.requiresNetworkAddition(chainId)
     };
   }

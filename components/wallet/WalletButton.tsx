@@ -4,6 +4,7 @@ import { WalletUtils } from '../../utils/walletUtils';
 import Button from '../Button';
 import Icon from '../Icon';
 import { WalletConnectModal } from './WalletConnectModal';
+import { NetworkSelector } from './NetworkSelector';
 
 interface WalletButtonProps {
   className?: string;
@@ -124,7 +125,14 @@ export const WalletButton: React.FC<WalletButtonProps> = ({
   // Connected state
   if (isConnected && account) {
     return (
-      <div className="relative">
+      <div className="relative flex items-center gap-2">
+        {/* Network Selector - Shows multi-chain options */}
+        <NetworkSelector 
+          variant="outline" 
+          size={size} 
+          showLabel={false}
+        />
+        
         <Button
           variant={variant}
           size={size}
@@ -134,11 +142,6 @@ export const WalletButton: React.FC<WalletButtonProps> = ({
           <Icon name="wallet" className="mr-2" size={16} />
           <div className="flex flex-col items-start">
             <div className="flex items-center gap-2">
-              {showNetwork && networkName && (
-                <span className="text-xs text-muted-foreground">
-                  {WalletUtils.getNetworkIcon(chainId || 1)} {networkName}
-                </span>
-              )}
               <span className="font-mono text-sm">
                 {WalletUtils.formatAddress(account)}
               </span>
