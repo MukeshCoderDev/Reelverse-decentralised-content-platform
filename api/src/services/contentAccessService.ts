@@ -1,6 +1,7 @@
 import { logger } from '../utils/logger';
 import { AgeVerificationService } from './ageVerificationService';
 import { RedisService } from '../config/redis';
+import { PolicyEngine, PolicyEvaluationRequest } from './policyEngine';
 import axios from 'axios';
 
 export interface AccessCheckRequest {
@@ -57,11 +58,13 @@ export class ContentAccessService {
   private static instance: ContentAccessService;
   private ageVerificationService: AgeVerificationService;
   private redisService: RedisService;
+  private policyEngine: PolicyEngine;
   private geoipApiKey: string;
 
   private constructor() {
     this.ageVerificationService = AgeVerificationService.getInstance();
     this.redisService = RedisService.getInstance();
+    this.policyEngine = PolicyEngine.getInstance();
     this.geoipApiKey = process.env.GEOIP_API_KEY || '';
   }
 
@@ -73,7 +76,97 @@ export class ContentAccessService {
   }
 
   /**
-   * Perform comprehensive access check for content
+   * Perform comprehensive access check for content using new policy engine
+   */
+  async checkAccessWithPolicyEngine(request: AccessCheckRequest): Promise<AccessCheckResult> {
+    try {
+      logger.info(`Checking access with policy engine for content ${request.contentId} by user ${request.userAddress}`);
+
+      // Get geolocation if IP is provided
+      let geolocation = {
+        country: 'US',
+        region: 'Unknown',
+        city: 'Unknown',
+        latitude: 0,
+        longitude: 0
+      };
+
+      if (request.userIP) {
+        geolocation = await this.getGeolocation(request.userIP);
+      }
+
+      // Create policy evaluation request
+      const policyRequest: PolicyEvaluationRequest = {
+        contentId: request.contentId,
+        userId: request.userAddress,
+        deviceId: request.sessionId || 'unknown-device',
+        ipAddress: request.userIP || '127.0.0.1',
+        geolocation,
+        userAgent: request.userAgent || '',
+        sessionId: request.sessionId
+      };
+
+      // Evaluate access using policy engine
+      const policyDecision = await this.policyEngine.evaluateAccess(policyRequest);
+
+      if (!policyDecision.allowed) {
+        const reasons: AccessDenialReason[] = policyDecision.restrictions.map(restriction => ({
+          type: restriction.type as any,
+          message: restriction.message,
+          details: restriction.details
+        }));
+
+        return {
+          allowed: false,
+          reasons
+        };
+      }
+
+      // Create playback ticket if access is allowed
+      const ticket = await this.policyEngine.createPlaybackTicket(
+        request.contentId,
+        request.userAddress,
+        policyDecision,
+        policyRequest.deviceId,
+        240 // 4 hours TTL
+      );
+
+      // Generate access token (legacy format for compatibility)
+      const accessToken = await this.generateAccessToken(request, {
+        id: request.contentId,
+        creatorAddress: 'unknown',
+        title: 'Content',
+        ageRestricted: policyDecision.restrictions.some(r => r.type === 'age'),
+        geographicRestrictions: [],
+        entitlementRequired: policyDecision.entitlements.some(e => e.purchaseRequired),
+        moderationStatus: 'approved',
+        isActive: true
+      });
+
+      logger.info(`Access granted with policy engine for content ${request.contentId} to user ${request.userAddress}`);
+
+      return {
+        allowed: true,
+        reasons: [],
+        accessToken,
+        expiresAt: ticket.expiresAt,
+        watermarkId: policyDecision.watermarkProfile?.userData.sessionId
+      };
+
+    } catch (error) {
+      logger.error('Error checking content access with policy engine:', error);
+      return {
+        allowed: false,
+        reasons: [{
+          type: 'content_unavailable',
+          message: 'Access check failed due to system error'
+        }]
+      };
+    }
+  }
+
+  /**
+   * Perform comprehensive access check for content (legacy method)
    */
   async checkAccess(request: AccessCheckRequest): Promise<AccessCheckResult> {
     try {

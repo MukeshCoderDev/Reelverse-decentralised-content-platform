@@ -17,11 +17,18 @@ import { logger } from './utils/logger';
 import { connectDatabase } from './config/database';
 import { connectRedis } from './config/redis';
 import { aiServiceManager } from './services/ai/aiServiceManager';
+import { infrastructure } from './core/infrastructure';
+import { eventBus } from './core/eventBus';
+import { auditSink } from './core/auditSink';
 
 // Import routes
 import authRoutes from './routes/auth';
 import contentRoutes from './routes/content';
 import uploadRoutes from './routes/upload';
+import multipartUploadRoutes from './routes/multipartUpload';
+import transcodingRoutes from './routes/transcoding';
+import packagingRoutes from './routes/packaging';
+import drmRoutes from './routes/drm';
 import paymentRoutes from './routes/payment';
 import ageVerificationRoutes from './routes/ageVerification';
 import consentRoutes from './routes/consentRoutes';
@@ -38,6 +45,7 @@ import enhancedFeatureFlagRoutes from '../routes/enhancedFeatureFlags';
 import privacyRoutes from './routes/privacy';
 import paymentComplianceRoutes from './routes/paymentCompliance';
 import aiGovernanceRoutes from './routes/aiGovernance';
+import policyRoutes from './routes/policy';
 
 // Load environment variables
 dotenv.config();
@@ -107,15 +115,19 @@ if (process.env.NODE_ENV !== 'test') {
 app.get('/health', async (req, res) => {
   try {
     const aiHealth = await aiServiceManager.healthCheck();
+    const infraHealth = await infrastructure.healthCheck();
     
-    res.status(200).json({
-      status: aiHealth.status === 'healthy' ? 'healthy' : 'degraded',
+    const overallHealthy = aiHealth.status === 'healthy' && infraHealth.healthy;
+    
+    res.status(overallHealthy ? 200 : 503).json({
+      status: overallHealthy ? 'healthy' : 'degraded',
       timestamp: new Date().toISOString(),
       version: process.env.npm_package_version || '1.0.0',
       environment: process.env.NODE_ENV || 'development',
       services: {
         api: 'healthy',
         ...aiHealth.services,
+        ...infraHealth.components
       }
     });
   } catch (error) {
@@ -131,6 +143,10 @@ app.get('/health', async (req, res) => {
 app.use(`/api/${API_VERSION}/auth`, authRoutes);
 app.use(`/api/${API_VERSION}/content`, contentRoutes);
 app.use(`/api/${API_VERSION}/upload`, uploadRoutes);
+app.use(`/api/${API_VERSION}/multipart-upload`, multipartUploadRoutes);
+app.use(`/api/${API_VERSION}/transcoding`, transcodingRoutes);
+app.use(`/api/${API_VERSION}/packaging`, packagingRoutes);
+app.use(`/api/${API_VERSION}/drm`, drmRoutes);
 app.use(`/api/${API_VERSION}/payment`, paymentRoutes);
 app.use(`/api/${API_VERSION}/age-verification`, ageVerificationRoutes);
 app.use(`/api/${API_VERSION}/consent`, consentRoutes);
@@ -147,6 +163,7 @@ app.use(`/api/${API_VERSION}/feature-flags`, enhancedFeatureFlagRoutes);
 app.use(`/api/${API_VERSION}/privacy`, privacyRoutes);
 app.use(`/api/${API_VERSION}/payment-compliance`, paymentComplianceRoutes);
 app.use(`/api/${API_VERSION}/ai-governance`, aiGovernanceRoutes);
+app.use(`/api/${API_VERSION}/policy`, policyRoutes);
 
 // Error handling middleware
 app.use(notFoundHandler);
@@ -156,18 +173,24 @@ app.use(unifiedErrorHandler);
 process.on('SIGTERM', async () => {
   logger.info('SIGTERM received, shutting down gracefully');
   await aiServiceManager.shutdown();
+  await infrastructure.shutdown();
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
   logger.info('SIGINT received, shutting down gracefully');
   await aiServiceManager.shutdown();
+  await infrastructure.shutdown();
   process.exit(0);
 });
 
 // Start server
 async function startServer() {
   try {
+    // Initialize core infrastructure first
+    await infrastructure.initialize();
+    logger.info('Core infrastructure initialized successfully');
+
     // Connect to database
     await connectDatabase();
     logger.info('Database connected successfully');
@@ -180,12 +203,28 @@ async function startServer() {
     await aiServiceManager.initialize();
     logger.info('AI services initialized successfully');
 
+    // Emit server startup event
+    await eventBus.publish({
+      type: 'server.started',
+      version: '1.0',
+      correlationId: 'server-startup',
+      payload: {
+        port: PORT,
+        environment: process.env.NODE_ENV || 'development',
+        version: process.env.npm_package_version || '1.0.0'
+      },
+      metadata: {
+        source: 'api-server'
+      }
+    });
+
     // Start HTTP server
     app.listen(PORT, () => {
       logger.info(`🚀 Reelverse API server running on port ${PORT}`);
       logger.info(`📚 API documentation available at http://localhost:${PORT}/api/${API_VERSION}/docs`);
       logger.info(`🏥 Health check available at http://localhost:${PORT}/health`);
       logger.info(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      logger.info(`📊 Event bus and audit sink active`);
     });
   } catch (error) {
     logger.error('Failed to start server:', error);

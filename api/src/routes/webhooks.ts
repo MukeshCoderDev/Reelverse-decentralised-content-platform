@@ -90,31 +90,21 @@ router.post('/livepeer', asyncHandler(async (req, res) => {
   try {
     logger.info('Received Livepeer webhook:', req.body);
 
-    // Validate webhook signature if configured
-    const signature = req.headers['livepeer-signature'];
-    const webhookSecret = process.env.LIVEPEER_WEBHOOK_SECRET;
+    // This is a legacy endpoint - new transcoding jobs should use job-specific webhooks
+    // at /api/transcoding/webhook/:jobId for better security and tracking
     
-    if (webhookSecret && signature) {
-      // Verify webhook signature (implementation would depend on Livepeer's signing method)
-      // For now, we'll just log it
-      logger.debug('Livepeer webhook signature:', signature);
-    }
-
     const event = req.body;
     
-    // Handle different event types
+    // Handle different event types for backward compatibility
     switch (event.type) {
       case 'asset.ready':
-        logger.info(`Asset ready: ${event.asset?.id}`);
-        // Update upload progress if this is part of our pipeline
+        logger.info(`Asset ready: ${event.payload?.asset?.id}`);
         break;
       case 'asset.failed':
-        logger.error(`Asset failed: ${event.asset?.id}`, event.asset?.status?.errorMessage);
-        // Update upload progress with error
+        logger.error(`Asset failed: ${event.payload?.asset?.id}`, event.payload?.asset?.status?.errorMessage);
         break;
       case 'asset.updated':
-        logger.info(`Asset updated: ${event.asset?.id}`);
-        // Update progress if needed
+        logger.info(`Asset updated: ${event.payload?.asset?.id}`);
         break;
       default:
         logger.debug(`Unhandled Livepeer event type: ${event.type}`);
@@ -122,7 +112,7 @@ router.post('/livepeer', asyncHandler(async (req, res) => {
 
     res.json({ 
       success: true, 
-      message: 'Livepeer webhook processed successfully'
+      message: 'Livepeer webhook processed successfully (legacy endpoint)'
     });
   } catch (error) {
     logger.error('Failed to process Livepeer webhook:', error);
