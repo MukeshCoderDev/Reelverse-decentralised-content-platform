@@ -1,0 +1,512 @@
+openapi: 3.0.0
+info:
+  title: Reelverse API
+  version: 1.0.0
+  description: API documentation for the Reelverse platform, including Account Abstraction, Paymaster, Upload, and Billing services.
+servers:
+  - url: /api/v1
+    description: Main API server
+
+tags:
+  - name: Account Abstraction (AA)
+    description: Operations related to ERC-4337 Smart Accounts and Session Keys.
+  - name: Paymaster
+    description: Endpoints for gas sponsorship and user operation submission.
+  - name: Upload
+    description: Content upload pipeline management.
+  - name: Billing
+    description: Credit and escrow management for user accounts.
+paths:
+  /api/v1/aa/account:
+    get:
+      summary: Get Smart Account Details
+      tags:
+        - Account Abstraction (AA)
+      description: Retrieves the counterfactual smart account address for the authenticated user, its deployment status, and relevant chain information.
+      security:
+        - BearerAuth: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Smart account details retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  smartAccountAddress:
+                    type: string
+                    description: The counterfactual address of the user's smart account.
+                    example: "0x123..."
+                  deployed:
+                    type: boolean
+                    description: Indicates if the smart account is already deployed on-chain.
+                    example: false
+                  entryPoint:
+                    type: string
+                    description: The address of the EntryPoint contract.
+                    example: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789"
+                  chainId:
+                    type: number
+                    description: The chain ID of the network.
+                    example: 11155111
+                  sessionKeyManagerSupported:
+                    type: boolean
+                    description: Indicates if session key manager is configured.
+                    example: true
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/aa/session/status:
+    get:
+      summary: List Active Session Keys
+      tags:
+        - Account Abstraction (AA)
+      description: Retrieves a list of active session keys for the authenticated user's smart account.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Active session keys retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      description: Unique ID of the session key.
+                      example: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                    publicKey:
+                      type: string
+                      description: The public key of the session key.
+                      example: "0x0123..."
+                    scope:
+                      type: object
+                      description: Defines the permissions and targets for the session key.
+                      properties:
+                        targets:
+                          type: array
+                          items:
+                            type: string
+                            description: Contract address the session key can interact with.
+                            example: "0xContractAddress"
+                        selectors:
+                          type: array
+                          items:
+                            type: string
+                            description: Function selector the session key can call.
+                            example: "0xabcdef12"
+                    expiresAt:
+                      type: string
+                      format: date-time
+                      description: Timestamp when the session key expires.
+                      example: "2025-12-31T23:59:59Z"
+                    createdAt:
+                      type: string
+                      format: date-time
+                      description: Timestamp when the session key was created.
+                      example: "2025-01-01T00:00:00Z"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/aa/session/create:
+    post:
+      summary: Create Session Key (Server-Side Signing)
+      tags:
+        - Account Abstraction (AA)
+      description: >
+        Creates a new session key for the authenticated user's smart account and registers it on-chain.
+        This endpoint is primarily for `AUTH_PROVIDER=dev` mode where server-side signing is used.
+        For `AUTH_PROVIDER=privy`, use the `/api/v1/aa/userop/prepare` and `/api/v1/aa/userop/submit` flow.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ttlMins
+                - scope
+              properties:
+                ttlMins:
+                  type: number
+                  description: Time-to-live for the session key in minutes.
+                  example: 60
+                scope:
+                  type: object
+                  description: Defines the permissions and targets for the session key.
+                  properties:
+                    targets:
+                      type: array
+                      items:
+                        type: string
+                        description: Contract addresses the session key can interact with.
+                        example: ["0xContractAddress1", "0xContractAddress2"]
+                    selectors:
+                      type: array
+                      items:
+                        type: string
+                        description: Function selectors the session key can call.
+                        example: ["0xabcdef12", "0x12345678"]
+      responses:
+        '201':
+          description: Session key creation initiated. UserOp hash returned for tracking.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Session key registration initiated."
+                  userOpHash:
+                    type: string
+                    description: Hash of the submitted UserOperation for on-chain registration.
+                    example: "0xabc123..."
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '501':
+          description: Not Implemented - Session Key Manager not configured or not applicable for current AUTH_PROVIDER.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                example:
+                  error: "not_implemented"
+                  message: "Please use the /api/v1/aa/userop/prepare + /api/v1/aa/userop/submit flow for session key installation with Privy."
+
+  /api/v1/aa/session/revoke:
+    post:
+      summary: Revoke Session Key (Server-Side Signing)
+      tags:
+        - Account Abstraction (AA)
+      description: >
+        Revokes an existing session key for the authenticated user's smart account.
+        This endpoint is primarily for `AUTH_PROVIDER=dev` mode where server-side signing is used.
+        For `AUTH_PROVIDER=privy`, revocation should be handled client-side or via a different flow.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - sessionKeyId
+              properties:
+                sessionKeyId:
+                  type: string
+                  format: uuid
+                  description: The ID of the session key to revoke.
+                  example: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+      responses:
+        '200':
+          description: Session key revoked and revocation UserOp submitted successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Session key revoked successfully."
+                  userOpHash:
+                    type: string
+                    description: Hash of the submitted UserOperation for on-chain revocation.
+                    example: "0xabc123..."
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Session key not found or unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '501':
+          description: Not Implemented - Session Key Manager not configured or not applicable for current AUTH_PROVIDER.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                example:
+                  error: "not_implemented"
+                  message: "Session key revocation for Privy flow is not implemented via this endpoint. Revoke client-side."
+
+  /api/v1/aa/sponsor-and-send:
+    post:
+      summary: Sponsor and Send User Operation (Server-Side Signing)
+      tags:
+        - Account Abstraction (AA)
+      description: >
+        Sponsors and sends a user operation on behalf of the authenticated user's smart account.
+        This endpoint is primarily for `AUTH_PROVIDER=dev` mode where server-side signing is used.
+        For `AUTH_PROVIDER=privy`, use the `/api/v1/aa/userop/prepare` and `/api/v1/aa/userop/submit` flow.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - to
+                - data
+              properties:
+                to:
+                  type: string
+                  description: The recipient address of the transaction.
+                  example: "0xTargetContractAddress"
+                data:
+                  type: string
+                  description: The calldata for the transaction.
+                  example: "0xabcdef1234567890"
+                value:
+                  type: string
+                  description: The amount of native currency to send (in wei, as string).
+                  example: "1000000000000000000"
+      responses:
+        '200':
+          description: User operation sponsored and sent successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userOpHash:
+                    type: string
+                    description: Hash of the submitted UserOperation.
+                    example: "0xabc123..."
+                  txHash:
+                    type: string
+                    description: Hash of the bundled transaction (if available).
+                    example: "0xdef456..."
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '402':
+          description: Paymaster did not provide sponsorship.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '501':
+          description: Not Implemented - Not applicable for current AUTH_PROVIDER.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                example:
+                  error: "not_implemented"
+                  message: "Please use the /api/v1/aa/userop/prepare + /api/v1/aa/userop/submit flow for sponsored actions with Privy."
+/api/v1/aa/userop/prepare:
+ post:
+   summary: Prepare User Operation for Client-Side Signing
+   tags:
+     - Account Abstraction (AA)
+   description: >
+     Prepares a UserOperation for client-side signing by filling in nonce, gas estimates,
+     and paymaster data. Returns the unsigned UserOperation and its hash.
+     This endpoint is used when `AUTH_PROVIDER=privy`.
+   security:
+     - BearerAuth: []
+   requestBody:
+     required: true
+     content:
+       application/json:
+         schema:
+           type: object
+           required:
+             - kind
+           properties:
+             kind:
+               type: string
+               enum: ['call', 'session_install']
+               description: The type of user operation to prepare.
+               example: "call"
+             to:
+               type: string
+               description: The recipient address for 'call' operations.
+               example: "0xTargetContractAddress"
+             data:
+               type: string
+               description: The calldata for 'call' operations.
+               example: "0xabcdef1234567890"
+             value:
+               type: string
+               description: The amount of native currency to send (in wei, as string) for 'call' operations.
+               example: "1000000000000000000"
+             scope:
+               type: string
+               description: JSON string of the session key policy for 'session_install' operations.
+               example: '{"targets":["0xContentAccessGateAddress"],"selectors":["0xabcdef01"]}'
+             ttlMins:
+               type: number
+               description: Time-to-live in minutes for the session key for 'session_install' operations.
+               example: 60
+   responses:
+     '200':
+       description: User operation prepared successfully.
+       content:
+         application/json:
+           schema:
+             type: object
+             properties:
+               userOp:
+                 type: object
+                 description: The unsigned UserOperation object.
+                 # Define UserOperationStruct properties here if needed, or reference a schema
+               userOpHash:
+                 type: string
+                 description: The hash of the UserOperation, to be signed by the client.
+                 example: "0xabc123..."
+     '400':
+       $ref: '#/components/responses/ValidationError'
+     '401':
+       $ref: '#/components/responses/UnauthorizedError'
+     '500':
+       $ref: '#/components/responses/InternalServerError'
+
+/api/v1/aa/userop/submit:
+ post:
+   summary: Submit Signed User Operation
+   tags:
+     - Account Abstraction (AA)
+   description: >
+     Accepts a signed UserOperation and submits it to the bundler.
+     This endpoint is used when `AUTH_PROVIDER=privy`.
+   security:
+     - BearerAuth: []
+   requestBody:
+     required: true
+     content:
+       application/json:
+         schema:
+           type: object
+           required:
+             - userOp
+             - signature
+           properties:
+             userOp:
+               type: object
+               description: The complete UserOperation object, including the signature.
+               # Define UserOperationStruct properties here if needed, or reference a schema
+             signature:
+               type: string
+               description: The signature generated by the client for the userOpHash.
+               example: "0xSignatureFromClient"
+   responses:
+     '200':
+       description: User operation submitted successfully.
+       content:
+         application/json:
+           schema:
+             type: object
+             properties:
+               userOpHash:
+                 type: string
+                 description: Hash of the submitted UserOperation.
+                 example: "0xabc123..."
+               txHash:
+                 type: string
+                 description: Hash of the bundled transaction (if available).
+                 example: "0xdef456..."
+               receipt:
+                 type: object
+                 description: The full user operation receipt (if available).
+     '400':
+       $ref: '#/components/responses/ValidationError'
+     '401':
+       $ref: '#/components/responses/UnauthorizedError'
+     '500':
+       $ref: '#/components/responses/InternalServerError'
+
+components:
+ securitySchemes:
+   BearerAuth:
+     type: http
+     scheme: bearer
+     bearerFormat: JWT
+ responses:
+   UnauthorizedError:
+     description: Authentication information is missing or invalid.
+     content:
+       application/json:
+         schema:
+           $ref: '#/components/schemas/Error'
+           example:
+             error: "unauthorized"
+             message: "Invalid or missing authentication token."
+   ValidationError:
+     description: Invalid input provided.
+     content:
+       application/json:
+         schema:
+           $ref: '#/components/schemas/Error'
+           example:
+             error: "validation_error"
+             message: "Invalid input for field 'ttlMins'."
+   RateLimitedError:
+     description: Too many requests.
+     headers:
+       Retry-After:
+         schema:
+           type: integer
+           format: int32
+           description: Number of seconds to wait before retrying.
+     content:
+       application/json:
+         schema:
+           $ref: '#/components/schemas/Error'
+           example:
+             error: "rate_limited"
+             message: "Too many requests, please try again after 60 seconds."
+   InternalServerError:
+     description: An unexpected error occurred on the server.
+     content:
+       application/json:
+         schema:
+           $ref: '#/components/schemas/Error'
+           example:
+             error: "internal_server_error"
+             message: "An unexpected error occurred."
+ schemas:
+   Error:
+     type: object
+     properties:
+       error:
+         type: string
+         description: A machine-readable error code.
+         example: "unauthorized"
+       message:
+         type: string
+         description: A human-readable error message.
+         example: "Authentication information is missing or invalid."

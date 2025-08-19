@@ -6,6 +6,9 @@ import { authenticateToken, requireVerified } from '../middleware/auth';
 import UploadPipelineService from '../services/uploadPipelineService';
 import FileUtils from '../utils/fileUtils';
 import { logger } from '../utils/logger';
+import { rateLimit } from '../middleware/rateLimit';
+import { parseRateLimit } from '../utils/rateLimitParser';
+import { env } from '../config/env';
 
 const router = Router();
 const uploadPipelineService = new UploadPipelineService();
@@ -48,6 +51,7 @@ router.post('/start',
   requireVerified,
   upload.single('video'),
   validateUploadRequest,
+  rateLimit(parseRateLimit(env.RATE_LIMIT_UPLOAD_START)),
   asyncHandler(async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -234,6 +238,17 @@ router.post('/cancel/:uploadId',
 );
 
 // Legacy endpoints for backward compatibility
+router.post('/finalize',
+  authenticateToken,
+  requireVerified,
+  rateLimit(parseRateLimit(env.RATE_LIMIT_UPLOAD_START)),
+  asyncHandler(async (req, res) => {
+    // This is a placeholder for the actual finalize logic
+    // In a real scenario, this would confirm the upload, process it, etc.
+    res.json({ success: true, message: 'Upload finalized (placeholder).' });
+  })
+);
+
 router.post('/request', asyncHandler(async (req, res) => {
   res.status(301).json({
     success: false,

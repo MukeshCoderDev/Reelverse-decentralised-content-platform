@@ -35,6 +35,7 @@
     "@google/genai": "^1.13.0",
     "@headlessui/react": "^1.7.18",
     "@heroicons/react": "^2.1.1",
+    "@privy-io/react-auth": "^1.60.0",
     "@rainbow-me/rainbowkit": "^2.0.5",
     "@tanstack/react-query": "^5.28.6",
     "@uppy/core": "^4.5.2",

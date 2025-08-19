@@ -4,6 +4,9 @@ import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { RedisService } from '../config/redis';
 import { getDatabase } from '../config/database';
+import { rateLimit } from '../middleware/rateLimit';
+import { parseRateLimit } from '../utils/rateLimitParser';
+import { env } from '../config/env';
 // FxSnapshot type (minimal local fallback)
 type FxSnapshot = { ethUsdCents: number; takenAt: string };
 import { holdsCreated, settleDebits, rateLimitHits, idempotencyPersistenceFailures, preauthLatency, settleLatency, missedRelease, preauthRejects, incCounter } from '../utils/metrics';
@@ -31,7 +34,7 @@ async function replayLookup(key: string) {
   return null;
 }
 
-router.post('/preauth', async (req: Request, res: Response) => {
+router.post('/sponsor', rateLimit(parseRateLimit(env.RATE_LIMIT_SPONSOR)), async (req: Request, res: Response) => {
   const idempotencyKey = requireIdempotencyHeader(req, res);
   if (!idempotencyKey) return;
 
@@ -41,9 +44,6 @@ router.post('/preauth', async (req: Request, res: Response) => {
   const replay = await replayLookup(idempotencyKey);
   if (replay) return res.status(replay.status_code || 200).json(replay.response_json);
 
-  const rateKey = `rate:preauth:${orgId}`;
-  const allowed = await redis.incrementRateLimit(rateKey, 24 * 3600);
-  if (allowed > 100) { incCounter(rateLimitHits, 1, (res.locals as any).metricsLabels); return res.status(429).set('Retry-After', '3600').json({ error: 'RATE_LIMITED' }); }
 
   const signature = req.header('x-signature');
   const secret = process.env.PAYMASTER_HMAC_SECRET;
@@ -110,7 +110,7 @@ router.post('/preauth', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/settle', async (req: Request, res: Response) => {
+router.post('/submit', rateLimit(parseRateLimit(env.RATE_LIMIT_SUBMIT)), async (req: Request, res: Response) => {
   const idempotencyKey = requireIdempotencyHeader(req, res);
   if (!idempotencyKey) return;
   const { approvalId, txHash, gasUsedWei, effectiveGasPriceWei } = req.body as any;

@@ -3,14 +3,16 @@ import { env } from '../../config/env';
 import { currentChainConfig } from '../../config/chain';
 import { ethers } from 'ethers';
 import { logger } from '../../utils/logger';
-import { EntryPoint__factory, SimpleAccountFactory__factory } from '@account-abstraction/contracts';
+import { EntryPoint__factory, SimpleAccountFactory__factory, UserOperationStruct } from '@account-abstraction/contracts';
 import { encryptionService } from '../../utils/encryption';
 
 export class SmartAccountService {
   private provider: ethers.JsonRpcProvider;
   private entryPointContract: ethers.Contract;
+  private ownerAddress: string;
 
-  constructor() {
+  constructor(ownerAddress: string) {
+    this.ownerAddress = ownerAddress;
     this.provider = new ethers.JsonRpcProvider(currentChainConfig.rpcUrl);
     this.entryPointContract = new ethers.Contract(
       currentChainConfig.entryPointAddress,
@@ -33,7 +35,7 @@ export class SmartAccountService {
    * @param ownerAddress The address of the EOA owner of the smart account.
    * @returns The counterfactual smart account address.
    */
-  async getCounterfactualAddress(ownerAddress: string): Promise<string> {
+  async getCounterfactualAddress(): Promise<string> {
     const factory = new ethers.Contract(
       env.SIMPLE_ACCOUNT_FACTORY_ADDRESS,
       SimpleAccountFactory__factory.abi,
@@ -44,7 +46,7 @@ export class SmartAccountService {
       ['address', 'bytes'],
       [
         env.SIMPLE_ACCOUNT_FACTORY_ADDRESS,
-        factory.interface.encodeFunctionData('createAccount', [ownerAddress, salt]),
+        factory.interface.encodeFunctionData('createAccount', [this.ownerAddress, salt]),
       ]
     );
     const senderAddress = await this.entryPointContract.getSenderAddress(initCode);
@@ -57,7 +59,7 @@ export class SmartAccountService {
    * @param ownerAddress The address of the EOA owner.
    * @returns The initCode as a hex string.
    */
-  async buildInitCode(ownerAddress: string): Promise<string> {
+  async buildInitCode(): Promise<string> {
     const factory = new ethers.Contract(
       env.SIMPLE_ACCOUNT_FACTORY_ADDRESS,
       SimpleAccountFactory__factory.abi,
@@ -68,7 +70,7 @@ export class SmartAccountService {
       ['address', 'bytes'],
       [
         env.SIMPLE_ACCOUNT_FACTORY_ADDRESS,
-        factory.interface.encodeFunctionData('createAccount', [ownerAddress, salt]),
+        factory.interface.encodeFunctionData('createAccount', [this.ownerAddress, salt]),
       ]
     );
     return initCode;
@@ -81,11 +83,11 @@ export class SmartAccountService {
    * @param ownerAddress The address of the EOA owner.
    * @returns initCode if the account is not deployed, otherwise '0x'.
    */
-  async ensureDeployedSmartAccount(smartAccountAddress: string, ownerAddress: string): Promise<string> {
+  async ensureDeployedSmartAccount(smartAccountAddress: string): Promise<string> {
     const code = await this.provider.getCode(smartAccountAddress);
     if (code === '0x') {
       logger.info(`Smart account ${smartAccountAddress} not deployed, building initCode.`);
-      return this.buildInitCode(ownerAddress);
+      return this.buildInitCode();
     }
     logger.info(`Smart account ${smartAccountAddress} already deployed.`);
     return '0x';
@@ -120,15 +122,37 @@ export class SmartAccountService {
     }
   }
 
-  /**
-   * Checks if a smart account is deployed on-chain.
-   * @param smartAccountAddress The address of the smart account.
-   * @returns True if deployed, false otherwise.
-   */
-  async isSmartAccountDeployed(smartAccountAddress: string): Promise<boolean> {
-    const code = await this.provider.getCode(smartAccountAddress);
-    return code !== '0x';
-  }
-}
+ async buildExecuteCallUserOp(to: string, data: string, value: string): Promise<UserOperationStruct> {
+   const smartAccountAddress = await this.getCounterfactualAddress();
+   const initCode = await this.ensureDeployedSmartAccount(smartAccountAddress);
 
-export default new SmartAccountService();
+   const callData = new ethers.Interface(['function execute(address to, uint256 value, bytes data)']).encodeFunctionData('execute', [to, value, data]);
+
+   return {
+     sender: smartAccountAddress,
+     nonce: BigInt(0), // Will be filled by bundler
+     initCode: initCode,
+     callData: callData,
+     callGasLimit: BigInt(0), // Will be filled by bundler
+     verificationGasLimit: BigInt(0), // Will be filled by bundler
+     preVerificationGas: BigInt(0), // Will be filled by bundler
+     maxFeePerGas: BigInt(0), // Will be filled by bundler
+     maxPriorityFeePerGas: BigInt(0), // Will be filled by bundler
+     paymasterAndData: '0x', // Will be filled by paymaster
+     signature: '0x', // Will be filled by client
+   };
+ }
+
+ /**
+  * Checks if a smart account is deployed on-chain.
+  * @param smartAccountAddress The address of the smart account.
+  * @returns True if deployed, false otherwise.
+  */
+ async isSmartAccountDeployed(smartAccountAddress: string): Promise<boolean> {
+   const code = await this.provider.getCode(smartAccountAddress);
+   return code !== '0x';
+ }
+  }
+
+
+export default SmartAccountService;

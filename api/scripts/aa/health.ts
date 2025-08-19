@@ -1,6 +1,6 @@
-import { UnifiedPaymasterService } from '../api/src/services/onchain/biconomyPaymasterService';
-import { currentChainConfig } from '../api/src/config/chain';
-import { logger } from '../api/src/utils/logger';
+import { UnifiedPaymasterService } from '../../src/services/onchain/biconomyPaymasterService';
+import { currentChainConfig } from '../../src/config/chain';
+import { logger } from '../../src/utils/logger';
 
 async function runHealthCheck() {
   logger.info('Starting AA health check...');

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { MobileLayout } from './components/mobile/MobileLayout';
@@ -56,60 +55,60 @@ const App: React.FC = () => {
             <HashRouter>
               <div data-testid="app-loaded">
                 <MobileLayout>
-        <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/create" element={<CreatePage />} />
-            <Route path="/following" element={<FollowingPage />} />
-            <Route path="/trending" element={<TrendingPage />} />
-            <Route path="/explore" element={<ExplorePage />} />
-            <Route path="/subs" element={<SubscriptionsPage />} />
-            <Route path="/communities" element={<CommunitiesPage />} />
-            <Route path="/notifications" element={<NotificationsPage />} />
-            <Route path="/inbox" element={<InboxPage />} />
-            
-            {/* Library Routes */}
-            <Route path="/u/me" element={<ProfilePage />} />
-            <Route path="/library/history" element={<HistoryPage />} />
-            <Route path="/library/liked" element={<LikedPage />} />
-            <Route path="/library/watch-later" element={<WatchLaterPage />} />
-            <Route path="/library/collections" element={<CollectionsPage />} />
-            <Route path="/library/collects" element={<CollectsPage />} />
-            <Route path="/library/drafts" element={<DraftsPage />} />
+                  <Routes>
+                    <Route path="/" element={<HomePage />} />
+                    <Route path="/create" element={<CreatePage />} />
+                    <Route path="/following" element={<FollowingPage />} />
+                    <Route path="/trending" element={<TrendingPage />} />
+                    <Route path="/explore" element={<ExplorePage />} />
+                    <Route path="/subs" element={<SubscriptionsPage />} />
+                    <Route path="/communities" element={<CommunitiesPage />} />
+                    <Route path="/notifications" element={<NotificationsPage />} />
+                    <Route path="/inbox" element={<InboxPage />} />
 
-            {/* Studio Routes */}
-            <Route path="/studio" element={<StudioLayout />}>
-              <Route index element={<StudioDashboardPage />} />
-              <Route path="content" element={<StudioContentPage />} />
-              <Route path="monetization" element={<StudioMonetizationPage />} />
-              <Route path="subscriptions" element={<StudioSubscriptionsPage />} />
-              <Route path="splits" element={<StudioSplitsPage />} />
-              <Route path="analytics" element={<StudioAnalyticsPage />} />
-              <Route path="moderation" element={<StudioModerationPage />} />
-              <Route path="verify" element={<StudioVerifyPage />} />
-            </Route>
+                    {/* Library Routes */}
+                    <Route path="/u/me" element={<ProfilePage />} />
+                    <Route path="/library/history" element={<HistoryPage />} />
+                    <Route path="/library/liked" element={<LikedPage />} />
+                    <Route path="/library/watch-later" element={<WatchLaterPage />} />
+                    <Route path="/library/collections" element={<CollectionsPage />} />
+                    <Route path="/library/collects" element={<CollectsPage />} />
+                    <Route path="/library/drafts" element={<DraftsPage />} />
 
-            {/* Web3 Routes */}
-            <Route path="/wallet" element={<WalletPage />} />
-            <Route path="/earnings" element={<EarningsPage />} />
-            <Route path="/buy-crypto" element={<BuyCryptoPage />} />
+                    {/* Studio Routes */}
+                    <Route path="/studio" element={<StudioLayout />}>
+                      <Route index element={<StudioDashboardPage />} />
+                      <Route path="content" element={<StudioContentPage />} />
+                      <Route path="monetization" element={<StudioMonetizationPage />} />
+                      <Route path="subscriptions" element={<StudioSubscriptionsPage />} />
+                      <Route path="splits" element={<StudioSplitsPage />} />
+                      <Route path="analytics" element={<StudioAnalyticsPage />} />
+                      <Route path="moderation" element={<StudioModerationPage />} />
+                      <Route path="verify" element={<StudioVerifyPage />} />
+                    </Route>
 
-            {/* System Routes */}
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/settings/connections" element={<ConnectionsPage />} />
-            <Route path="/help" element={<HelpPage />} />
-            <Route path="/status" element={<StatusPage />} />
+                    {/* Web3 Routes */}
+                    <Route path="/wallet" element={<WalletPage />} />
+                    <Route path="/earnings" element={<EarningsPage />} />
+                    <Route path="/buy-crypto" element={<BuyCryptoPage />} />
 
-            {/* Phase 2 Routes */}
-            <Route path="/live" element={<LivePage />} />
-            <Route path="/dao" element={<DaoPage />} />
-            <Route path="/dao/treasury" element={<TreasuryPage />} />
-            <Route path="/rewards" element={<RewardsPage />} />
-            
-            {/* Agency Routes */}
-            <Route path="/agency" element={<AgencyDashboardPage />} />
-            
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
+                    {/* System Routes */}
+                    <Route path="/settings" element={<SettingsPage />} />
+                    <Route path="/settings/connections" element={<ConnectionsPage />} />
+                    <Route path="/help" element={<HelpPage />} />
+                    <Route path="/status" element={<StatusPage />} />
+
+                    {/* Phase 2 Routes */}
+                    <Route path="/live" element={<LivePage />} />
+                    <Route path="/dao" element={<DaoPage />} />
+                    <Route path="/dao/treasury" element={<TreasuryPage />} />
+                    <Route path="/rewards" element={<RewardsPage />} />
+
+                    {/* Agency Routes */}
+                    <Route path="/agency" element={<AgencyDashboardPage />} />
+
+                    <Route path="*" element={<NotFoundPage />} />
+                  </Routes>
                 </MobileLayout>
               </div>
             </HashRouter>

@@ -1,5 +1,8 @@
-// Final Perfection Platform - Complete Integration
-// This file serves as the main entry point for the entire platform
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from '../App'; // Assuming App.tsx is in the root
+import './index.css'; // Assuming you have a global CSS file
+import { PrivyProvider } from '@privy-io/react-auth';
 
 // Core Services
 export { LiveStreamingOrchestrator } from './services/live-streaming/LiveStreamingOrchestrator';
@@ -383,4 +386,18 @@ Features included:
 All 20 tasks completed successfully! 🎉
 `);
 
-export default FinalPerfectionPlatform;
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <PrivyProvider
+      appId={import.meta.env.VITE_PRIVY_APP_ID}
+      config={{
+        embeddedWallets: {
+          createOnLogin: 'users-without-wallets',
+        },
+        loginMethods: ['passkey', 'email', 'google'],
+      }}
+    >
+      <App />
+    </PrivyProvider>
+  </React.StrictMode>,
+);

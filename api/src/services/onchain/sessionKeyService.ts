@@ -3,18 +3,17 @@ import { env } from '../../config/env';
 import { currentChainConfig } from '../../config/chain';
 import { ethers } from 'ethers';
 import { logger } from '../../utils/logger';
-import { UserOperation } from './paymasterService';
+import { UserOperationStruct } from '@account-abstraction/contracts';
 import { SmartAccountService } from './smartAccountService';
 import { encryptionService } from '../../utils/encryption';
-import { env } from '../../config/env'; // Import env for SESSION_KEY_MANAGER_ADDRESS
+import { SessionKeyManagerModule, DEFAULT_SESSION_KEY_MANAGER_MODULE } from '@biconomy/modules';
+import { SessionKeyManagerModule as SessionKeyManagerModuleContract } from '@biconomy/modules/dist/src/contracts/SessionKeyManagerModule';
+import { Interface } from 'ethers';
 
 // Placeholder ABI for a hypothetical SessionKeyManager contract
 // This ABI assumes functions like `registerSessionKey` and `revokeSessionKey`
-const SESSION_KEY_MANAGER_ABI = [
-  'function registerSessionKey(address sessionKey, address[] calldata targets, bytes4[] calldata selectors, uint48 expiry) external',
-  'function revokeSessionKey(address sessionKey) external',
-  'function execute(address dest, uint256 value, bytes calldata func) returns (bytes memory)',
-];
+const SessionKeyManagerModuleABI = SessionKeyManagerModule.abi;
+const SessionKeyManagerModuleInterface = new Interface(SessionKeyManagerModuleABI);
 
 interface SessionKey {
   id: string;
@@ -29,9 +28,11 @@ interface SessionKey {
 
 export class SessionKeyService {
   private smartAccountService: SmartAccountService;
+  private ownerAddress: string;
 
-  constructor() {
-    this.smartAccountService = new SmartAccountService();
+  constructor(ownerAddress: string) {
+    this.ownerAddress = ownerAddress;
+    this.smartAccountService = new SmartAccountService(ownerAddress);
   }
 
   private encryptPrivateKey(plain: string): string {
@@ -68,22 +69,85 @@ export class SessionKeyService {
    * @param expiry Expiry timestamp for the session key.
    * @returns A Partial UserOperation object.
    */
-  async buildRegisterSessionKeyUserOp({ smartAccountAddress, sessionPubKey, targets, selectors, expiry }: { smartAccountAddress: string; sessionPubKey: string; targets: string[]; selectors: string[]; expiry: number }): Promise<Partial<UserOperation>> {
-    const sessionKeyManagerInterface = new ethers.Interface(SESSION_KEY_MANAGER_ABI);
-    
-    // Encode the call to registerSessionKey on the SessionKeyManager contract
-    const registerCallData = sessionKeyManagerInterface.encodeFunctionData(
-      'registerSessionKey',
-      [sessionPubKey, targets, selectors, expiry]
+  async buildRegisterSessionKeyUserOp(policyJson: string, ttlMins?: number): Promise<UserOperationStruct> {
+    const sessionKey = ethers.Wallet.createRandom();
+    const sessionPubKey = sessionKey.address;
+    const encryptedPrivateKey = this.encryptPrivateKey(sessionKey.privateKey);
+
+    let policy;
+    try {
+      policy = JSON.parse(policyJson);
+    } catch (e) {
+      throw new Error('Invalid SESSION_KEY_POLICY_JSON format. Must be a valid JSON string.');
+    }
+
+    const expiresAt = ttlMins ? Math.floor((Date.now() + ttlMins * 60 * 1000) / 1000) : Math.floor((Date.now() + 30 * 24 * 60 * 60 * 1000) / 1000); // Default 30 days
+
+    // Store the session key in the database
+    const smartAccountAddress = await this.smartAccountService.getCounterfactualAddress();
+    await this.storeSessionKey({
+      smartAccountId: smartAccountAddress,
+      publicKey: sessionPubKey,
+      encryptedPrivateKey: encryptedPrivateKey,
+      scope: policy,
+      expiresAt: new Date(expiresAt * 1000),
+    });
+
+    const sessionKeyManagerModule = new SessionKeyManagerModule(env.SESSION_KEY_MANAGER_ADDRESS!);
+    const enableModuleCallData = sessionKeyManagerModule.encodeEnableModule(sessionPubKey, policy, expiresAt);
+
+    const smartAccountAddress = await this.smartAccountService.getCounterfactualAddress();
+    const initCode = await this.smartAccountService.ensureDeployedSmartAccount(smartAccountAddress);
+
+    const callData = new ethers.Interface(['function execute(address dest, uint256 value, bytes calldata func) returns (bytes memory)']).encodeFunctionData(
+      'execute',
+      [env.SESSION_KEY_MANAGER_ADDRESS, 0, enableModuleCallData]
+    );
+
+    return {
+      sender: smartAccountAddress,
+      nonce: BigInt(0), // Will be filled by bundler
+      initCode: initCode,
+      callData: callData,
+      callGasLimit: BigInt(0), // Will be filled by bundler
+      verificationGasLimit: BigInt(0), // Will be filled by bundler
+      preVerificationGas: BigInt(0), // Will be filled by bundler
+      maxFeePerGas: BigInt(0), // Will be filled by bundler
+      maxPriorityFeePerGas: BigInt(0), // Will be filled by bundler
+      paymasterAndData: '0x', // Will be filled by paymaster
+      signature: '0x', // Will be filled by client
+    };
+  }
+
+    const policyBytes = ethers.toUtf8Bytes(JSON.stringify(policy));
+
+    // Encode the call to enableModule on the SessionKeyManagerModule
+    const enableModuleCallData = SessionKeyManagerModuleInterface.encodeFunctionData(
+      'enableModule',
+      [sessionPubKey, policyBytes, expiry]
     );
 
     // The UserOperation's callData will be to the smart account's `execute` function,
     // which then calls the SessionKeyManager.
-    // Assuming SimpleAccount has an `execute` function: `function execute(address dest, uint256 value, bytes calldata func)`
-    const smartAccountInterface = new ethers.Interface(SESSION_KEY_MANAGER_ABI); // Re-using for execute, assuming it's part of the smart account's ABI or a common interface
+    // The UserOperation's callData will be to the smart account's `setupAndEnableModule` function,
+    // which installs and enables the session key manager module.
+    // This assumes the smart account factory deploys a modular account.
+    // For Biconomy, this is typically handled by the SDK's `addModule` or `enableModule` on the account.
+    // Here, we're directly calling `enableModule` on the SessionKeyManagerModule.
+    // The smart account itself needs to call this.
+    // Assuming the smart account has a generic `execute` function to call arbitrary contracts:
+    const smartAccountInterface = new ethers.Interface([
+      'function execute(address dest, uint256 value, bytes calldata func) returns (bytes memory)',
+      'function enableModule(address module)' // For enabling the module on the smart account itself
+    ]);
+
+    // First, ensure the SessionKeyManagerModule is enabled on the smart account if it's not already.
+    // This might be a separate UserOp or part of the initCode if it's the first transaction.
+    // For simplicity, we'll assume it's already enabled or handled by the SDK.
+    // The `enableModuleCallData` is what the smart account will execute.
     const callData = smartAccountInterface.encodeFunctionData(
       'execute',
-      [env.SESSION_KEY_MANAGER_ADDRESS, 0, registerCallData]
+      [env.SESSION_KEY_MANAGER_ADDRESS, 0, enableModuleCallData]
     );
 
     return {
@@ -99,27 +163,30 @@ export class SessionKeyService {
    * @param sessionPubKey The public key of the session key to revoke.
    * @returns A Partial UserOperation object.
    */
-  async revokeSessionKeyUserOp({ smartAccountAddress, sessionPubKey }: { smartAccountAddress: string; sessionPubKey: string }): Promise<Partial<UserOperation>> {
-    const sessionKeyManagerInterface = new ethers.Interface(SESSION_KEY_MANAGER_ABI);
+  async revokeSessionKeyUserOp(sessionPubKey: string): Promise<UserOperationStruct> {
+    const sessionKeyManagerModule = new SessionKeyManagerModule(env.SESSION_KEY_MANAGER_ADDRESS!);
+    const disableModuleCallData = sessionKeyManagerModule.encodeDisableModule(sessionPubKey);
 
-    // Encode the call to revokeSessionKey on the SessionKeyManager contract
-    const revokeCallData = sessionKeyManagerInterface.encodeFunctionData(
-      'revokeSessionKey',
-      [sessionPubKey]
-    );
+    const smartAccountAddress = await this.smartAccountService.getCounterfactualAddress();
+    const initCode = await this.smartAccountService.ensureDeployedSmartAccount(smartAccountAddress);
 
-    // The UserOperation's callData will be to the smart account's `execute` function,
-    // which then calls the SessionKeyManager.
-    const smartAccountInterface = new ethers.Interface(SESSION_KEY_MANAGER_ABI); // Re-using for execute
-    const callData = smartAccountInterface.encodeFunctionData(
+    const callData = new ethers.Interface(['function execute(address dest, uint256 value, bytes calldata func) returns (bytes memory)']).encodeFunctionData(
       'execute',
-      [env.SESSION_KEY_MANAGER_ADDRESS, 0, revokeCallData]
+      [env.SESSION_KEY_MANAGER_ADDRESS, 0, disableModuleCallData]
     );
 
     return {
       sender: smartAccountAddress,
+      nonce: BigInt(0),
+      initCode: initCode,
       callData: callData,
-      // Other userOp fields like nonce, gas limits, etc., will be filled by the bundler/paymaster
+      callGasLimit: BigInt(0),
+      verificationGasLimit: BigInt(0),
+      preVerificationGas: BigInt(0),
+      maxFeePerGas: BigInt(0),
+      maxPriorityFeePerGas: BigInt(0),
+      paymasterAndData: '0x',
+      signature: '0x',
     };
   }
 
@@ -175,4 +242,6 @@ export class SessionKeyService {
   }
 }
 
-export default new SessionKeyService();
+}
+
+export default SessionKeyService;

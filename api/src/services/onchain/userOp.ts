@@ -1,20 +1,9 @@
 import { ethers } from 'ethers';
-import { EntryPoint__factory } from '@account-abstraction/contracts';
+import { EntryPoint__factory, UserOperationStruct } from '@account-abstraction/contracts';
 import { BundlerClient } from './bundlerClient';
 
-export type UserOperationV06 = {
-    sender: string;
-    nonce: bigint;
-    initCode: string;
-    callData: string;
-    callGasLimit: bigint;
-    verificationGasLimit: bigint;
-    preVerificationGas: bigint;
-    maxFeePerGas: bigint;
-    maxPriorityFeePerGas: bigint;
-    paymasterAndData: string;
-    signature: string;
-};
+// Re-export UserOperationStruct from contracts for consistency
+export { UserOperationStruct };
 
 export function buildCallData(to: string, data: string, value: bigint = BigInt(0)): string {
     const iface = new ethers.Interface(['function execute(address to, uint256 value, bytes data)']);
@@ -26,7 +15,7 @@ export async function fillNonce(entryPointAddress: string, sender: string, provi
     return await entryPoint.getNonce(sender, 0);
 }
 
-export function computeUserOpHash(userOp: UserOperationV06, entryPointAddress: string, chainId: bigint): string {
+export function computeUserOpHash(userOp: UserOperationStruct, entryPointAddress: string, chainId: bigint): string {
     const userOpType = [
         'address sender',
         'uint256 nonce',
@@ -38,7 +27,7 @@ export function computeUserOpHash(userOp: UserOperationV06, entryPointAddress: s
         'uint256 maxFeePerGas',
         'uint256 maxPriorityFeePerGas',
         'bytes paymasterAndData',
-        'uint256 signature', // This is a placeholder for the signature length in the struct
+        'bytes signature',
     ];
 
     const encoded = ethers.AbiCoder.defaultAbiCoder().encode(userOpType, [
@@ -52,7 +41,7 @@ export function computeUserOpHash(userOp: UserOperationV06, entryPointAddress: s
         userOp.maxFeePerGas,
         userOp.maxPriorityFeePerGas,
         userOp.paymasterAndData,
-        BigInt(0), // Placeholder for signature length
+        userOp.signature,
     ]);
 
     const encodedHash = ethers.keccak256(encoded);
@@ -73,7 +62,7 @@ export function computeUserOpHash(userOp: UserOperationV06, entryPointAddress: s
 }
 
 export async function signUserOp({ userOp, signer, entryPointAddress, chainId }: {
-    userOp: UserOperationV06;
+    userOp: UserOperationStruct;
     signer: ethers.Signer;
     entryPointAddress: string;
     chainId: bigint;
@@ -82,12 +71,11 @@ export async function signUserOp({ userOp, signer, entryPointAddress, chainId }:
     return await signer.signMessage(ethers.getBytes(userOpHash));
 }
 
-export async function fillGas({ bundlerClient, userOp, entryPointAddress }: {
+export async function fillGas({ bundlerClient, userOp }: {
     bundlerClient: BundlerClient;
-    userOp: UserOperationV06;
-    entryPointAddress: string;
-}): Promise<UserOperationV06> {
-    const gasEstimates = await bundlerClient.estimateGas(userOp, entryPointAddress);
+    userOp: UserOperationStruct;
+}): Promise<UserOperationStruct> {
+    const gasEstimates = await bundlerClient.estimateGas(userOp);
 
     userOp.callGasLimit = BigInt(gasEstimates.callGasLimit);
     userOp.verificationGasLimit = BigInt(gasEstimates.verificationGasLimit);
@@ -101,9 +89,9 @@ export async function fillGas({ bundlerClient, userOp, entryPointAddress }: {
 }
 
 export async function ensurePaymaster({ userOp, paymasterService }: {
-    userOp: UserOperationV06;
+    userOp: UserOperationStruct;
     paymasterService: any; // Replace with actual paymaster service type
-}): Promise<UserOperationV06> {
+}): Promise<UserOperationStruct> {
     if (paymasterService) {
         const paymasterAndData = await paymasterService.getPaymasterAndData(userOp);
         userOp.paymasterAndData = paymasterAndData;

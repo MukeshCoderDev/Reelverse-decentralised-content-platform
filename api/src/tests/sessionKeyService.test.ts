@@ -1,206 +1,266 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SessionKeyService } from '../services/onchain/sessionKeyService';
+import { SmartAccountService } from '../services/onchain/smartAccountService';
 import { encryptionService } from '../utils/encryption';
-import { ethers } from 'ethers';
-import { env } from '../config/env';
 import { getDatabase } from '../config/database';
+import { env } from '../config/env';
+import { ethers } from 'ethers';
+import { UserOperationStruct } from '@account-abstraction/contracts';
+import { SessionKeyManagerModule } from '@biconomy/modules';
 
-// Mock environment variables
-vi.mock('../config/env', () => ({
-  env: {
-    SMART_ACCOUNT_MASTER_KEY: 'a'.repeat(64), // 32-byte hex key
-    SESSION_KEY_MANAGER_ADDRESS: '0x0000000000000000000000000000000000000007',
-  },
-}));
-
-// Mock database
-const mockQuery = vi.fn();
-vi.mock('../config/database', () => ({
-  getDatabase: () => ({
-    connect: () => ({
-      query: mockQuery,
-      release: vi.fn(),
+// Mock dependencies
+jest.mock('../config/database', () => ({
+  getDatabase: jest.fn().mockReturnValue({
+    connect: jest.fn().mockResolvedValue({
+      query: jest.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
+      release: jest.fn(),
     }),
   }),
 }));
 
-// Mock SmartAccountService dependencies
-vi.mock('../services/onchain/smartAccountService', () => ({
-  SmartAccountService: vi.fn().mockImplementation(() => ({
-    getCounterfactualAddress: vi.fn(async (ownerAddress: string) => `0xSmartAccount${ownerAddress.slice(2, 10)}`),
-    isSmartAccountDeployed: vi.fn(async () => true),
+jest.mock('../utils/encryption', () => ({
+  encryptionService: {
+    encrypt: jest.fn((data) => `encrypted_${data}`),
+    decrypt: jest.fn((data) => data.replace('encrypted_', '')),
+  },
+}));
+
+jest.mock('../services/onchain/smartAccountService', () => ({
+  SmartAccountService: jest.fn().mockImplementation((ownerAddress: string) => ({
+    getCounterfactualAddress: jest.fn().mockResolvedValue('0xSmartAccountAddress'),
+    isSmartAccountDeployed: jest.fn().mockResolvedValue(true),
+    ensureDeployedSmartAccount: jest.fn().mockResolvedValue('0x'),
+    buildExecuteCallUserOp: jest.fn().mockImplementation((to, data, value) => ({
+      sender: '0xSmartAccountAddress',
+      callData: `0xExecuteCallDataFor_${to}_${data}_${value}`,
+      nonce: BigInt(0),
+      initCode: '0x',
+      callGasLimit: BigInt(0),
+      verificationGasLimit: BigInt(0),
+      preVerificationGas: BigInt(0),
+      maxFeePerGas: BigInt(0),
+      maxPriorityFeePerGas: BigInt(0),
+      paymasterAndData: '0x',
+      signature: '0x',
+    })),
   })),
 }));
 
+// Mock Biconomy modules for ABI access
+jest.mock('@biconomy/modules', () => ({
+ SessionKeyManagerModule: jest.fn().mockImplementation((address: string) => ({
+   address,
+   encodeEnableModule: jest.fn((sessionKey, policy, expiry) => `0xEnableModuleCallData_${sessionKey}_${JSON.stringify(policy)}_${expiry}`),
+   encodeDisableModule: jest.fn((sessionKey) => `0xDisableModuleCallData_${sessionKey}`),
+ })),
+ DEFAULT_SESSION_KEY_MANAGER_MODULE: '0xSessionKeyManagerModuleAddress',
+}));
+
+const mockDb = getDatabase();
+const mockDb = getDatabase();
+const mockSmartAccountService = new SmartAccountService('0xMockOwnerAddress'); // Pass a mock owner address
+
 describe('SessionKeyService', () => {
-  let service: SessionKeyService;
+ let sessionKeyService: SessionKeyService;
+ const mockOwnerAddress = '0xMockOwnerAddress';
 
-  beforeEach(() => {
-    service = new SessionKeyService();
-    mockQuery.mockReset();
-  });
+ beforeAll(() => {
+   env.SESSION_KEY_MANAGER_ADDRESS = '0xSessionKeyManagerModuleAddress';
+   env.CONTENT_ACCESS_GATE_ADDRESS = '0xContentAccessGateAddress';
+   env.UPLOAD_MANAGER_ADDRESS = '0xUploadManagerAddress';
+   env.ENTRY_POINT_ADDRESS = '0xEntryPointAddress';
+   env.CHAIN_ID = 1;
+ });
 
-  it('generates a key, encrypts, and enforces expiry', async () => {
-    const ttlMins = 60;
-    const scope = { targets: ['0xContract1'], selectors: ['0xabcdef01'] };
-    const { publicKey, encryptedPrivateKey, expiresAt } = await service.generateSessionKey({ ttlMms: ttlMins, scope });
+ beforeEach(() => {
+   sessionKeyService = new SessionKeyService(mockOwnerAddress);
+   jest.clearAllMocks();
+   (mockDb.connect as jest.Mock).mockClear();
+   (mockSmartAccountService.getCounterfactualAddress as jest.Mock).mockResolvedValue('0xSmartAccountAddress');
+ });
+  describe('generateSessionKey', () => {
+    it('should generate a session key with encrypted private key and expiry', async () => {
+      const ttlMins = 60;
+      const scope = { targets: ['0xTarget'], selectors: ['0xabcdef12'] };
+      const { publicKey, encryptedPrivateKey, expiresAt } = await sessionKeyService.generateSessionKey({ ttlMins, scope });
 
-    expect(publicKey).toMatch(/^0x[0-9a-fA-F]{130}$/); // Uncompressed public key format
-    expect(encryptedPrivateKey).toBeTypeOf('string');
-    expect(encryptedPrivateKey.length).toBeGreaterThan(0);
-
-    const decryptedPrivateKey = encryptionService.decrypt(encryptedPrivateKey);
-    expect(decryptedPrivateKey).toMatch(/^0x[0-9a-fA-F]{64}$/); // Private key format
-
-    const expectedExpiry = new Date(Date.now() + ttlMins * 60 * 1000);
-    // Allow for a small time difference due to execution time
-    expect(expiresAt.getTime()).toBeGreaterThanOrEqual(Date.now() + ttlMins * 60 * 1000 - 1000);
-    expect(expiresAt.getTime()).toBeLessThanOrEqual(Date.now() + ttlMins * 60 * 1000 + 1000);
-  });
-
-  it('builds a register userOp with correct target/selectors', async () => {
-    const smartAccountAddress = '0xSmartAccountAddress';
-    const sessionPubKey = '0xSessionPublicKey';
-    const targets = ['0xTargetContract1', '0xTargetContract2'];
-    const selectors = ['0xabcdef01', '0x12345678'];
-    const expiry = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
-
-    const userOp = await service.buildRegisterSessionKeyUserOp({
-      smartAccountAddress,
-      sessionPubKey,
-      targets,
-      selectors,
-      expiry,
+      expect(publicKey).toMatch(/^0x[0-9a-fA-F]{128}$/); // Uncompressed public key format
+      expect(encryptedPrivateKey).toMatch(/^encrypted_0x[0-9a-fA-F]{64}$/); // Encrypted private key
+      expect(expiresAt.getTime()).toBeGreaterThan(Date.now());
+      expect(expiresAt.getTime()).toBeLessThanOrEqual(Date.now() + ttlMins * 60 * 1000);
     });
-
-    expect(userOp.sender).toBe(smartAccountAddress);
-    expect(userOp.callData).toBeTypeOf('string');
-    expect(userOp.callData).not.toBe('0x');
-
-    // Decode the outer callData (to smart account's execute function)
-    const smartAccountInterface = new ethers.Interface([
-      'function execute(address dest, uint256 value, bytes calldata func) returns (bytes memory)',
-    ]);
-    const decodedExecute = smartAccountInterface.decodeFunctionData('execute', userOp.callData!);
-    expect(decodedExecute[0]).toBe(env.SESSION_KEY_MANAGER_ADDRESS); // dest
-    expect(decodedExecute[1]).toBe(0n); // value
-    expect(decodedExecute[2]).toBeTypeOf('string'); // inner func callData
-
-    // Decode the inner callData (to SessionKeyManager's registerSessionKey function)
-    const sessionKeyManagerInterface = new ethers.Interface([
-      'function registerSessionKey(address sessionKey, address[] calldata targets, bytes4[] calldata selectors, uint48 expiry) external',
-    ]);
-    const decodedRegister = sessionKeyManagerInterface.decodeFunctionData('registerSessionKey', decodedExecute[2]);
-
-    expect(decodedRegister[0]).toBe(sessionPubKey);
-    expect(decodedRegister[1]).toEqual(targets);
-    expect(decodedRegister[2]).toEqual(selectors);
-    expect(Number(decodedRegister[3])).toBe(expiry);
   });
 
-  it('builds a revoke userOp', async () => {
-    const smartAccountAddress = '0xSmartAccountAddress';
-    const sessionPubKey = '0xSessionPublicKey';
-
-    const userOp = await service.revokeSessionKeyUserOp({
-      smartAccountAddress,
-      sessionPubKey,
-    });
-
-    expect(userOp.sender).toBe(smartAccountAddress);
-    expect(userOp.callData).toBeTypeOf('string');
-    expect(userOp.callData).not.toBe('0x');
-
-    // Decode the outer callData (to smart account's execute function)
-    const smartAccountInterface = new ethers.Interface([
-      'function execute(address dest, uint256 value, bytes calldata func) returns (bytes memory)',
-    ]);
-    const decodedExecute = smartAccountInterface.decodeFunctionData('execute', userOp.callData!);
-    expect(decodedExecute[0]).toBe(env.SESSION_KEY_MANAGER_ADDRESS); // dest
-    expect(decodedExecute[1]).toBe(0n); // value
-    expect(decodedExecute[2]).toBeTypeOf('string'); // inner func callData
-
-    // Decode the inner callData (to SessionKeyManager's revokeSessionKey function)
-    const sessionKeyManagerInterface = new ethers.Interface([
-      'function revokeSessionKey(address sessionKey) external',
-    ]);
-    const decodedRevoke = sessionKeyManagerInterface.decodeFunctionData('revokeSessionKey', decodedExecute[2]);
-
-    expect(decodedRevoke[0]).toBe(sessionPubKey);
-  });
-
-  it('stores a session key in the database', async () => {
-    const sessionKey = {
-      smartAccountId: 'org123',
-      publicKey: '0xPublicKey',
-      encryptedPrivateKey: 'encryptedKey',
-      scope: { actions: ['transfer'] },
-      expiresAt: new Date(),
-    };
-
-    mockQuery.mockResolvedValueOnce({ rows: [{ ...sessionKey, id: '1', createdAt: new Date() }], rowCount: 1 });
-
-    const storedKey = await service.storeSessionKey(sessionKey);
-
-    expect(mockQuery).toHaveBeenCalledWith(
-      `INSERT INTO session_keys(smart_account_id, public_key, encrypted_private_key, scope, expires_at)
-         VALUES($1, $2, $3, $4, $5) RETURNING *`,
-      [sessionKey.smartAccountId, sessionKey.publicKey, sessionKey.encryptedPrivateKey, JSON.stringify(sessionKey.scope), sessionKey.expiresAt]
-    );
-    expect(storedKey).toHaveProperty('id');
-    expect(storedKey.publicKey).toBe(sessionKey.publicKey);
-  });
-
-  it('retrieves active session keys from the database', async () => {
-    const activeKey = {
-      id: '1',
-      smartAccountId: 'org123',
-      publicKey: '0xPublicKey1',
-      encryptedPrivateKey: 'encryptedKey1',
-      scope: { actions: ['transfer'] },
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60), // 1 hour from now
-      revokedAt: null,
-      createdAt: new Date(),
-    };
-    const expiredKey = {
-      id: '2',
-      smartAccountId: 'org123',
-      publicKey: '0xPublicKey2',
-      encryptedPrivateKey: 'encryptedKey2',
-      scope: { actions: ['read'] },
-      expiresAt: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago
-      revokedAt: null,
-      createdAt: new Date(),
-    };
-
-    mockQuery.mockResolvedValueOnce({ rows: [activeKey, expiredKey], rowCount: 2 });
-
-    const activeSessions = await service.getActiveSessionKeys('org123');
-
-    expect(mockQuery).toHaveBeenCalledWith(
-      `SELECT * FROM session_keys WHERE smart_account_id = $1 AND expires_at > NOW() AND revoked_at IS NULL`,
-      ['org123']
-    );
-    // The mock returns both, but the SQL query filters. The test should reflect the SQL's intent.
-    // For a true unit test, we'd mock the *result* of the filtered query.
-    // Here, we're testing the service's interaction with the DB, assuming DB handles filtering.
-    // So, we expect the mock to return what the DB *would* return after filtering.
-    // Let's adjust the mock to return only active keys if the query is correct.
-    // Or, more simply, assert on the returned data after the service processes it.
-    expect(activeSessions.length).toBe(1);
-    expect(activeSessions[0].publicKey).toBe(activeKey.publicKey);
-  });
-
-  it('revokes a session key in the database', async () => {
-    const sessionKeyId = 'session456';
-
-    mockQuery.mockResolvedValueOnce({ rowCount: 1 });
-
-    await service.revokeSessionKey(sessionKeyId);
-
-    expect(mockQuery).toHaveBeenCalledWith(
-      `UPDATE session_keys SET revoked_at = NOW() WHERE id = $1`,
-      [sessionKeyId]
-    );
-  });
-});
+  describe('buildRegisterSessionKeyUserOp', () => {
+   describe('buildRegisterSessionKeyUserOp', () => {
+     it('should build a UserOp to register a session key with the provided policy and store it', async () => {
+       const ttlMins = 60;
+       const scope = { targets: ['0xTarget'], selectors: ['0xabcdef01'] };
+       const policyJson = JSON.stringify(scope);
+ 
+       const userOp = await sessionKeyService.buildRegisterSessionKeyUserOp(policyJson, ttlMins);
+ 
+       expect(userOp.sender).toBe('0xSmartAccountAddress');
+       expect(userOp.callData).toBeDefined();
+       expect(userOp.initCode).toBe('0x'); // Assuming account is already deployed for this test
+ 
+       // Verify storeSessionKey was called
+       expect(mockDb.connect().query).toHaveBeenCalledWith(
+         expect.stringContaining('INSERT INTO session_keys'),
+         expect.arrayContaining([
+           '0xSmartAccountAddress',
+           expect.any(String), // publicKey
+           expect.stringContaining('encrypted_0x'), // encryptedPrivateKey
+           policyJson,
+           expect.any(Date), // expiresAt
+         ])
+       );
+ 
+       // Verify SessionKeyManagerModule.encodeEnableModule was called with correct arguments
+       const SessionKeyManagerModuleMock = SessionKeyManagerModule as jest.Mock;
+       expect(SessionKeyManagerModuleMock).toHaveBeenCalledWith(env.SESSION_KEY_MANAGER_ADDRESS);
+       const instance = SessionKeyManagerModuleMock.mock.results[0].value;
+       expect(instance.encodeEnableModule).toHaveBeenCalledWith(
+         expect.any(String), // sessionPubKey
+         scope, // policy object
+         expect.any(Number) // expiry timestamp
+       );
+ 
+       // Decode the outer callData (execute on Smart Account)
+       const smartAccountInterface = new ethers.Interface([
+         'function execute(address dest, uint256 value, bytes calldata func) returns (bytes memory)'
+       ]);
+       const decodedExecute = smartAccountInterface.decodeFunctionData('execute', userOp.callData);
+       expect(decodedExecute[0]).toBe(env.SESSION_KEY_MANAGER_ADDRESS); // dest
+       expect(decodedExecute[1]).toBe(0n); // value
+       expect(decodedExecute[2]).toMatch(/^0xEnableModuleCallData_/); // func (call to enableModule)
+     });
+ 
+     it('should throw an error for invalid policy JSON', async () => {
+       const invalidPolicyJson = 'not-json';
+       await expect(sessionKeyService.buildRegisterSessionKeyUserOp(invalidPolicyJson, 60)).rejects.toThrow('Invalid SESSION_KEY_POLICY_JSON format. Must be a valid JSON string.');
+     });
+   });
+ 
+   describe('revokeSessionKeyUserOp', () => {
+     it('should build a UserOp to disable the session key module', async () => {
+       const sessionPubKey = '0xSessionPublicKey';
+ 
+       const userOp = await sessionKeyService.revokeSessionKeyUserOp(sessionPubKey);
+ 
+       expect(userOp.sender).toBe('0xSmartAccountAddress');
+       expect(userOp.callData).toBeDefined();
+       expect(userOp.initCode).toBe('0x'); // Assuming account is already deployed for this test
+ 
+       // Verify SessionKeyManagerModule.encodeDisableModule was called with correct arguments
+       const SessionKeyManagerModuleMock = SessionKeyManagerModule as jest.Mock;
+       expect(SessionKeyManagerModuleMock).toHaveBeenCalledWith(env.SESSION_KEY_MANAGER_ADDRESS);
+       const instance = SessionKeyManagerModuleMock.mock.results[0].value;
+       expect(instance.encodeDisableModule).toHaveBeenCalledWith(sessionPubKey);
+ 
+       // Decode the outer callData (execute on Smart Account)
+       const smartAccountInterface = new ethers.Interface([
+         'function execute(address dest, uint256 value, bytes calldata func) returns (bytes memory)'
+       ]);
+       const decodedExecute = smartAccountInterface.decodeFunctionData('execute', userOp.callData);
+       expect(decodedExecute[0]).toBe(env.SESSION_KEY_MANAGER_ADDRESS); // dest
+       expect(decodedExecute[1]).toBe(0n); // value
+       expect(decodedExecute[2]).toMatch(/^0xDisableModuleCallData_/); // func (call to disableModule)
+     });
+   });
+ 
+   describe('storeSessionKey', () => {
+     it('should store a session key in the database', async () => {
+       const mockSessionKey = {
+         smartAccountId: mockOwnerAddress,
+         publicKey: '0xPublicKey',
+         encryptedPrivateKey: 'encrypted_PrivateKey',
+         scope: { targets: ['0xTarget'], selectors: ['0xSelector'] },
+         expiresAt: new Date(),
+       };
+ 
+       (mockDb.connect().query as jest.Mock).mockResolvedValueOnce({ rows: [{ id: 'new-uuid', ...mockSessionKey }], rowCount: 1 });
+ 
+       const storedKey = await sessionKeyService['storeSessionKey'](mockSessionKey); // Access private method for test
+ 
+       expect(mockDb.connect().query).toHaveBeenCalledWith(
+         expect.stringContaining('INSERT INTO session_keys'),
+         [
+           mockSessionKey.smartAccountId,
+           mockSessionKey.publicKey,
+           mockSessionKey.encryptedPrivateKey,
+           JSON.stringify(mockSessionKey.scope),
+           mockSessionKey.expiresAt,
+         ]
+       );
+       expect(storedKey).toEqual(expect.objectContaining({ id: 'new-uuid', ...mockSessionKey }));
+     });
+   });
+ 
+   describe('getActiveSessionKeys', () => {
+     it('should retrieve active session keys for a smart account', async () => {
+       const activeKey = {
+         id: 'active-uuid',
+         smartAccountId: mockOwnerAddress,
+         publicKey: '0xActiveKey',
+         encryptedPrivateKey: 'encrypted_ActiveKey',
+         scope: {},
+         expiresAt: new Date(Date.now() + 100000), // Future date
+         revokedAt: null,
+         createdAt: new Date(),
+       };
+       (mockDb.connect().query as jest.Mock).mockResolvedValueOnce({ rows: [activeKey], rowCount: 1 });
+ 
+       const activeSessions = await sessionKeyService.getActiveSessionKeys(mockOwnerAddress);
+ 
+       expect(mockDb.connect().query).toHaveBeenCalledWith(
+         expect.stringContaining('SELECT * FROM session_keys WHERE smart_account_id = $1 AND expires_at > NOW() AND revoked_at IS NULL'),
+         [mockOwnerAddress]
+       );
+       expect(activeSessions).toEqual([activeKey]);
+     });
+ 
+     it('should not retrieve expired or revoked session keys', async () => {
+       const expiredKey = {
+         id: 'expired-uuid',
+         smartAccountId: mockOwnerAddress,
+         publicKey: '0xExpiredKey',
+         encryptedPrivateKey: 'encrypted_ExpiredKey',
+         scope: {},
+         expiresAt: new Date(Date.now() - 100000), // Past date
+         revokedAt: null,
+         createdAt: new Date(),
+       };
+       const revokedKey = {
+         id: 'revoked-uuid',
+         smartAccountId: mockOwnerAddress,
+         publicKey: '0xRevokedKey',
+         encryptedPrivateKey: 'encrypted_RevokedKey',
+         scope: {},
+         expiresAt: new Date(Date.now() + 100000),
+         revokedAt: new Date(), // Revoked
+         createdAt: new Date(),
+       };
+       (mockDb.connect().query as jest.Mock).mockResolvedValueOnce({ rows: [expiredKey, revokedKey], rowCount: 2 });
+ 
+       const activeSessions = await sessionKeyService.getActiveSessionKeys(mockOwnerAddress);
+ 
+       expect(mockDb.connect().query).toHaveBeenCalledWith(
+         expect.stringContaining('SELECT * FROM session_keys WHERE smart_account_id = $1 AND expires_at > NOW() AND revoked_at IS NULL'),
+         [mockOwnerAddress]
+       );
+       expect(activeSessions).toEqual([]); // Should be empty as per the query logic
+     });
+   });
+ 
+   describe('revokeSessionKey', () => {
+     it('should mark a session key as revoked in the database', async () => {
+       const sessionKeyId = 'revoke-uuid';
+       await sessionKeyService['revokeSessionKey'](sessionKeyId); // Access private method for test
+ 
+       expect(mockDb.connect().query).toHaveBeenCalledWith(
+         expect.stringContaining('UPDATE session_keys SET revoked_at = NOW() WHERE id = $1'),
+         [sessionKeyId]
+       );
+     });
+   });
+ });

@@ -7,66 +7,66 @@ import { logger } from '../utils/logger';
 import { getDatabase } from '../config/database';
 import { ethers, JsonRpcProvider, Wallet } from 'ethers';
 import { env } from '../config/env';
-import {
-  UserOperationV06,
-  buildCallData,
-  fillNonce,
-  signUserOp,
-  fillGas,
-  ensurePaymaster,
-} from '../services/onchain/userOp';
+import { rateLimit } from '../middleware/rateLimit';
+import { parseRateLimit } from '../utils/rateLimitParser';
+import { UserOperationStruct } from '@account-abstraction/contracts'; // Import directly from contracts
 import { BundlerClient } from '../services/onchain/bundlerClient';
+import aaClientSignRoutes from './aaClientSign';
+import { PaymasterService, UserOperation } from '../services/onchain/paymasterService'; // Import PaymasterService and UserOperation
+import { computeUserOpHash } from '../services/onchain/userOp'; // Import computeUserOpHash
 
 const router = Router();
-const smartAccountService = new SmartAccountService();
-const sessionKeyService = new SessionKeyService();
 const paymasterService = new UnifiedPaymasterService();
-const bundlerClient = new BundlerClient(env.BUNDLER_URL!); // BUNDLER_URL is required now
+const bundlerClient = new BundlerClient(env.BUNDLER_URL || 'http://localhost:4337'); // BUNDLER_URL is required now
 const provider = new JsonRpcProvider(env.POLYGON_RPC_URL || env.MUMBAI_RPC_URL || 'http://localhost:8545'); // Use a suitable RPC URL
-
 // Extend Request to include user property
 declare module 'express-serve-static-core' {
   interface Request {
-    user?: {
+    user?: { // This type is extended in authPrivy.ts
       id: string;
-      orgId: string;
+      orgId?: string; // Make optional for Privy
+      ownerAddress?: string; // Add ownerAddress for Privy
     };
   }
 }
 
 // Middleware to ensure user is authenticated and has an organization ID
 const authenticateUser = async (req: Request, res: Response, next: NextFunction) => {
-  // Placeholder for actual authentication logic
-  req.user = { id: 'mockUserId', orgId: 'mockOrgId' }; // Mock user
-  if (!req.user || !req.user.orgId) {
-    return res.status(401).json({ error: 'Unauthorized: User not authenticated or missing organization ID.' });
+  if (env.AUTH_PROVIDER === 'dev') {
+    req.user = { id: 'mockUserId', orgId: 'mockOrgId', ownerAddress: env.DEV_OWNER_PRIVATE_KEY ? new Wallet(env.DEV_OWNER_PRIVATE_KEY).address : '0xMockOwnerAddress' }; // Mock user for dev
+    if (!req.user || !req.user.orgId) {
+      return res.status(401).json({ error: 'Unauthorized: User not authenticated or missing organization ID.' });
+    }
+  } else if (env.AUTH_PROVIDER === 'privy') {
+    // Privy auth is handled by requirePrivyAuth middleware, which sets req.user.ownerAddress
+    if (!req.user || !req.user.ownerAddress) {
+      return res.status(401).json({ error: 'Unauthorized: User not authenticated or missing owner address.' });
+    }
+    // For Privy, orgId is not directly used from the backend perspective for AA operations,
+    // but rather the ownerAddress derived from Privy's embedded wallet.
+    // We can set a placeholder or derive it if needed for other parts of the system.
+    req.user.orgId = req.user.id; // Using Privy userId as orgId for consistency if needed elsewhere
+  } else {
+    return res.status(500).json({ error: 'Server configuration error: Unknown AUTH_PROVIDER.' });
   }
   next();
 };
 
 // Helper to get the appropriate signer
-const getSigner = async (orgId: string, useSessionKey: boolean = false): Promise<Wallet | undefined> => {
-  if (useSessionKey && env.SESSION_KEY_MANAGER_ADDRESS) {
-    // In a real scenario, you'd fetch the active session key's private key for the user
-    // For this demo, we'll assume the session key is managed client-side or by a secure vault
-    // and the backend only needs to know if it's "active".
-    // For backend signing with session key, the private key would need to be accessible here.
-    // Since the prompt implies session key is for frontend, we'll fall back to DEV_OWNER_PRIVATE_KEY for backend signing.
-    logger.warn('Backend signing with session key is not fully implemented. Falling back to DEV_OWNER_PRIVATE_KEY.');
-  }
-
-  if (env.DEV_OWNER_PRIVATE_KEY) {
-    return new Wallet(env.DEV_OWNER_PRIVATE_KEY, provider);
-  }
-  return undefined;
+const getSigner = async (ownerAddress: string): Promise<Wallet | undefined> => {
+ if (env.AUTH_PROVIDER === 'dev' && env.DEV_OWNER_PRIVATE_KEY) {
+   return new Wallet(env.DEV_OWNER_PRIVATE_KEY, provider);
+ }
+ // For Privy, signing happens client-side, so no server-side signer is returned here.
+ return undefined;
 };
 
 // GET /api/aa/account → { smartAccountAddress, deployed, entryPoint, chainId, sessionKeyManagerSupported }
 router.get('/account', authenticateUser, async (req: Request, res: Response) => {
   try {
-    const orgId = req.user!.orgId; // Asserting req.user is defined due to middleware
-    const ownerAddress = ethers.getAddress(ethers.keccak256(ethers.toUtf8Bytes(orgId)).slice(0, 42));
-    const smartAccountAddress = await smartAccountService.getCounterfactualAddress(ownerAddress);
+    const ownerAddress = req.user!.ownerAddress!;
+    const smartAccountService = new SmartAccountService(ownerAddress);
+    const smartAccountAddress = await smartAccountService.getCounterfactualAddress();
     const deployed = await smartAccountService.isSmartAccountDeployed(smartAccountAddress);
 
     res.json({
@@ -83,7 +83,16 @@ router.get('/account', authenticateUser, async (req: Request, res: Response) => 
 });
 
 // POST /api/aa/session/create { ttlMins, scope } → creates session key, registers via bundler, returns {sessionKeyId, publicKey, expiresAt}
-router.post('/session/create', authenticateUser, async (req: Request, res: Response) => {
+router.post('/session/create', authenticateUser, rateLimit({ key: 'aa_session_create', ...parseRateLimit(env.RATE_LIMIT_AA_SESSION) }), async (req: Request, res: Response) => {
+  if (env.AUTH_PROVIDER === 'privy') {
+    // Option: internally call aaClientSign.prepare(kind='session_install') and return userOpHash to sign + userOp (but do NOT sign server-side).
+    // For now, returning 501 as per instructions.
+    return res.status(501).json({
+      error: 'not_implemented',
+      message: 'Please use the /api/v1/aa/userop/prepare + /api/v1/aa/userop/submit flow for session key installation with Privy.',
+    });
+  }
+
   if (!env.SESSION_KEY_MANAGER_ADDRESS) {
     return res.status(501).json({
       supported: false,
@@ -93,81 +102,59 @@ router.post('/session/create', authenticateUser, async (req: Request, res: Respo
 
   try {
     const { ttlMins, scope } = req.body;
-    const orgId = req.user!.orgId;
+    const ownerAddress = req.user!.ownerAddress!;
 
     if (!ttlMins || !scope) {
       return res.status(400).json({ error: 'Missing ttlMins or scope.' });
     }
 
-    const ownerAddress = ethers.getAddress(ethers.keccak256(ethers.toUtf8Bytes(orgId)).slice(0, 42));
-    const smartAccountAddress = await smartAccountService.getCounterfactualAddress(ownerAddress);
+    const smartAccountService = new SmartAccountService(ownerAddress);
+    const sessionKeyService = new SessionKeyService(ownerAddress);
 
-    // 1. Generate session key
-    const { publicKey, encryptedPrivateKey, expiresAt } = await sessionKeyService.generateSessionKey({ ttlMins, scope });
+    // 1. Generate session key and build UserOp
+    // 1. Generate session key and build UserOp
+    let userOpStruct: UserOperationStruct = await sessionKeyService.buildRegisterSessionKeyUserOp(JSON.stringify(scope), ttlMins);
 
-    // 2. Store session key in DB
-    const storedSessionKey = await sessionKeyService.storeSessionKey({
-      smartAccountId: orgId,
-      publicKey,
-      encryptedPrivateKey,
-      scope,
-      expiresAt,
-    });
+    // 2. Ensure smart account is deployed and get initCode if needed
+    userOpStruct.initCode = await smartAccountService.ensureDeployedSmartAccount(await Promise.resolve(userOpStruct.sender));
 
-    // 3. Build UserOp to register session key on-chain
-    const registerUserOpPartial = await sessionKeyService.buildRegisterSessionKeyUserOp({
-      smartAccountAddress,
-      sessionPubKey: publicKey,
-      targets: scope.targets || [],
-      selectors: scope.selectors || [],
-      expiry: Math.floor(expiresAt.getTime() / 1000),
-    });
+    // 3. Fill nonce
+    userOpStruct = await (bundlerClient as any).fillNonce(userOpStruct); // Cast to any for now
 
-    let userOp: UserOperationV06 = {
-      sender: smartAccountAddress,
-      nonce: BigInt(0), // Will be filled
-      initCode: '0x', // Will be filled by ensureDeployedSmartAccount if needed
-      callData: registerUserOpPartial.callData || '0x',
-      callGasLimit: BigInt(0), // Will be filled
-      verificationGasLimit: BigInt(0), // Will be filled
-      preVerificationGas: BigInt(0), // Will be filled
-      maxFeePerGas: BigInt(0), // Will be filled
-      maxPriorityFeePerGas: BigInt(0), // Will be filled
-      paymasterAndData: '0x', // Will be filled
-      signature: '0x', // Will be signed
+    // 4. Get paymaster data (sponsorship) and fill gas estimates
+    const partialUserOp: Partial<UserOperation> = {
+      sender: await Promise.resolve(userOpStruct.sender),
+      nonce: userOpStruct.nonce.toString(),
+      initCode: ethers.hexlify(await Promise.resolve(userOpStruct.initCode)),
+      callData: ethers.hexlify(await Promise.resolve(userOpStruct.callData)),
+      callGasLimit: userOpStruct.callGasLimit.toString(),
+      verificationGasLimit: userOpStruct.verificationGasLimit.toString(),
+      preVerificationGas: userOpStruct.preVerificationGas.toString(),
+      maxFeePerGas: userOpStruct.maxFeePerGas.toString(),
+      maxPriorityFeePerGas: userOpStruct.maxPriorityFeePerGas.toString(),
+      paymasterAndData: ethers.hexlify(await Promise.resolve(userOpStruct.paymasterAndData)),
+      signature: ethers.hexlify(await Promise.resolve(userOpStruct.signature)),
     };
+    const paymasterResult = await paymasterService.getPaymasterData(partialUserOp);
+    userOpStruct.paymasterAndData = paymasterResult.paymasterAndData;
+    userOpStruct.preVerificationGas = BigInt(paymasterResult.preVerificationGas);
+    userOpStruct.verificationGasLimit = BigInt(paymasterResult.verificationGasLimit);
+    userOpStruct.callGasLimit = BigInt(paymasterResult.callGasLimit);
+    userOpStruct.maxFeePerGas = BigInt(paymasterResult.maxFeePerGas);
+    userOpStruct.maxPriorityFeePerGas = BigInt(paymasterResult.maxPriorityFeePerGas);
 
-    // Ensure smart account is deployed and get initCode if needed
-    userOp.initCode = await smartAccountService.ensureDeployedSmartAccount(smartAccountAddress, ownerAddress);
-
-    // Fill nonce
-    userOp.nonce = await fillNonce(env.ENTRY_POINT_ADDRESS, smartAccountAddress, provider);
-
-    // Get paymaster data (sponsorship)
-    userOp = await ensurePaymaster({ userOp, paymasterService });
-
-    // Fill gas estimates
-    userOp = await fillGas({ bundlerClient, userOp, entryPointAddress: env.ENTRY_POINT_ADDRESS });
-
-    // Sign the UserOperation
-    const signer = await getSigner(orgId);
+    // 5. Sign the UserOperation (server-side for dev mode)
+    const signer = await getSigner(ownerAddress);
     if (!signer) {
       return res.status(500).json({ error: 'No signer available for user operation.' });
     }
-    userOp.signature = await signUserOp({
-      userOp,
-      signer,
-      entryPointAddress: env.ENTRY_POINT_ADDRESS,
-      chainId: BigInt(env.CHAIN_ID),
-    });
+    userOpStruct.signature = await signer.signMessage(ethers.getBytes(computeUserOpHash(userOpStruct, currentChainConfig.entryPointAddress, BigInt(env.CHAIN_ID))));
+    const userOpHash = await (bundlerClient as any).sendUserOperation(userOpStruct); // Cast to any for now
 
-    const userOpHash = await bundlerClient.sendUserOperation(userOp, env.ENTRY_POINT_ADDRESS);
-    logger.info(`Session key registration UserOp submitted: ${userOpHash}`);
-
+    // In dev mode, we don't return session key details directly as it's server-managed.
+    // The frontend will poll /session/status to confirm.
     res.status(201).json({
-      sessionKeyId: storedSessionKey.id,
-      publicKey: storedSessionKey.publicKey,
-      expiresAt: storedSessionKey.expiresAt,
+      message: 'Session key registration initiated.',
       userOpHash,
     });
 
@@ -179,6 +166,13 @@ router.post('/session/create', authenticateUser, async (req: Request, res: Respo
 
 // POST /api/aa/session/revoke { sessionKeyId }
 router.post('/session/revoke', authenticateUser, async (req: Request, res: Response) => {
+  if (env.AUTH_PROVIDER === 'privy') {
+    return res.status(501).json({
+      error: 'not_implemented',
+      message: 'Session key revocation for Privy flow is not implemented via this endpoint. Revoke client-side.',
+    });
+  }
+
   if (!env.SESSION_KEY_MANAGER_ADDRESS) {
     return res.status(501).json({
       supported: false,
@@ -188,11 +182,14 @@ router.post('/session/revoke', authenticateUser, async (req: Request, res: Respo
 
   try {
     const { sessionKeyId } = req.body;
-    const orgId = req.user!.orgId;
+    const ownerAddress = req.user!.ownerAddress!;
 
     if (!sessionKeyId) {
       return res.status(400).json({ error: 'Missing sessionKeyId.' });
     }
+
+    const smartAccountService = new SmartAccountService(ownerAddress);
+    const sessionKeyService = new SessionKeyService(ownerAddress);
 
     // Fetch the session key from the database to get its public key and smart account ID
     const pool = getDatabase();
@@ -201,7 +198,7 @@ router.post('/session/revoke', authenticateUser, async (req: Request, res: Respo
     try {
       const resDb = await client.query(
         `SELECT * FROM session_keys WHERE id = $1 AND smart_account_id = $2`,
-        [sessionKeyId, orgId]
+        [sessionKeyId, ownerAddress] // Use ownerAddress as smart_account_id for consistency
       );
       if (resDb.rowCount === 0) {
         return res.status(404).json({ error: 'Session key not found or unauthorized.' });
@@ -216,54 +213,45 @@ router.post('/session/revoke', authenticateUser, async (req: Request, res: Respo
     }
 
     // Mark as revoked in DB first
-    await sessionKeyService.revokeSessionKey(sessionKeyId);
-
-    const ownerAddress = ethers.getAddress(ethers.keccak256(ethers.toUtf8Bytes(orgId)).slice(0, 42));
-    const smartAccountAddress = await smartAccountService.getCounterfactualAddress(ownerAddress);
+    await (sessionKeyService as any).revokeSessionKey(sessionKeyId);
 
     // Build UserOp to revoke session key on-chain
-    const revokeUserOpPartial = await sessionKeyService.revokeSessionKeyUserOp({
-      smartAccountAddress: smartAccountAddress,
-      sessionPubKey: sessionKeyToRevoke.public_key,
-    });
-
-    let userOp: UserOperationV06 = {
-      sender: smartAccountAddress,
-      nonce: BigInt(0), // Will be filled
-      initCode: '0x', // Not needed for revocation if account is already deployed
-      callData: revokeUserOpPartial.callData || '0x',
-      callGasLimit: BigInt(0), // Will be filled
-      verificationGasLimit: BigInt(0), // Will be filled
-      preVerificationGas: BigInt(0), // Will be filled
-      maxFeePerGas: BigInt(0), // Will be filled
-      maxPriorityFeePerGas: BigInt(0), // Will be filled
-      paymasterAndData: '0x', // Will be filled
-      signature: '0x', // Will be signed
-    };
+    // Build UserOp to revoke session key on-chain
+    let userOpStruct: UserOperationStruct = await (sessionKeyService as any).revokeSessionKeyUserOp(sessionKeyToRevoke.public_key);
 
     // Fill nonce
-    userOp.nonce = await fillNonce(env.ENTRY_POINT_ADDRESS, smartAccountAddress, provider);
+    userOpStruct = await (bundlerClient as any).fillNonce(userOpStruct); // Cast to any for now
 
-    // Get paymaster data (sponsorship)
-    userOp = await ensurePaymaster({ userOp, paymasterService });
-
-    // Fill gas estimates
-    userOp = await fillGas({ bundlerClient, userOp, entryPointAddress: env.ENTRY_POINT_ADDRESS });
+    // Get paymaster data (sponsorship) and fill gas estimates
+    const partialUserOp: Partial<UserOperation> = {
+      sender: await Promise.resolve(userOpStruct.sender),
+      nonce: userOpStruct.nonce.toString(),
+      initCode: ethers.hexlify(await Promise.resolve(userOpStruct.initCode)),
+      callData: ethers.hexlify(await Promise.resolve(userOpStruct.callData)),
+      callGasLimit: userOpStruct.callGasLimit.toString(),
+      verificationGasLimit: userOpStruct.verificationGasLimit.toString(),
+      preVerificationGas: userOpStruct.preVerificationGas.toString(),
+      maxFeePerGas: userOpStruct.maxFeePerGas.toString(),
+      maxPriorityFeePerGas: userOpStruct.maxPriorityFeePerGas.toString(),
+      paymasterAndData: ethers.hexlify(await Promise.resolve(userOpStruct.paymasterAndData)),
+      signature: ethers.hexlify(await Promise.resolve(userOpStruct.signature)),
+    };
+    const paymasterResult = await paymasterService.getPaymasterData(partialUserOp);
+    userOpStruct.paymasterAndData = paymasterResult.paymasterAndData;
+    userOpStruct.preVerificationGas = BigInt(paymasterResult.preVerificationGas);
+    userOpStruct.verificationGasLimit = BigInt(paymasterResult.verificationGasLimit);
+    userOpStruct.callGasLimit = BigInt(paymasterResult.callGasLimit);
+    userOpStruct.maxFeePerGas = BigInt(paymasterResult.maxFeePerGas);
+    userOpStruct.maxPriorityFeePerGas = BigInt(paymasterResult.maxPriorityFeePerGas);
 
     // Sign the UserOperation
-    const signer = await getSigner(orgId);
+    const signer = await getSigner(ownerAddress);
     if (!signer) {
       return res.status(500).json({ error: 'No signer available for user operation.' });
     }
-    userOp.signature = await signUserOp({
-      userOp,
-      signer,
-      entryPointAddress: env.ENTRY_POINT_ADDRESS,
-      chainId: BigInt(env.CHAIN_ID),
-    });
+    userOpStruct.signature = await signer.signMessage(ethers.getBytes(computeUserOpHash(userOpStruct, currentChainConfig.entryPointAddress, BigInt(env.CHAIN_ID))));
 
-    const userOpHash = await bundlerClient.sendUserOperation(userOp, env.ENTRY_POINT_ADDRESS);
-    logger.info(`Session key revocation UserOp submitted: ${userOpHash}`);
+    const userOpHash = await (bundlerClient as any).sendUserOperation(userOpStruct); // Cast to any for now
 
     res.status(200).json({ message: 'Session key revoked successfully.', userOpHash });
   } catch (error: any) {
@@ -274,61 +262,66 @@ router.post('/session/revoke', authenticateUser, async (req: Request, res: Respo
 
 // POST /api/aa/sponsor-and-send { to, data, value? }
 router.post('/sponsor-and-send', authenticateUser, async (req: Request, res: Response) => {
+  if (env.AUTH_PROVIDER === 'privy') {
+    return res.status(501).json({
+      error: 'not_implemented',
+      message: 'Please use the /api/v1/aa/userop/prepare + /api/v1/aa/userop/submit flow for sponsored actions with Privy.',
+    });
+  }
+
   try {
     const { to, data, value } = req.body;
-    const orgId = req.user!.orgId;
+    const ownerAddress = req.user!.ownerAddress!;
 
     if (!to || !data) {
       return res.status(400).json({ error: 'Missing "to" or "data" in request body.' });
     }
 
-    const ownerAddress = ethers.getAddress(ethers.keccak256(ethers.toUtf8Bytes(orgId)).slice(0, 42));
-    const smartAccountAddress = await smartAccountService.getCounterfactualAddress(ownerAddress);
+    const smartAccountService = new SmartAccountService(ownerAddress); // Instantiate here
 
-    let userOp: UserOperationV06 = {
-      sender: smartAccountAddress,
-      nonce: BigInt(0), // Will be filled
-      initCode: '0x', // Will be filled if account is not deployed
-      callData: buildCallData(to, data, value ? BigInt(value) : BigInt(0)),
-      callGasLimit: BigInt(0), // Will be filled
-      verificationGasLimit: BigInt(0), // Will be filled
-      preVerificationGas: BigInt(0), // Will be filled
-      maxFeePerGas: BigInt(0), // Will be filled
-      maxPriorityFeePerGas: BigInt(0), // Will be filled
-      paymasterAndData: '0x', // Will be filled
-      signature: '0x', // Will be signed
-    };
+    let userOpStruct: UserOperationStruct = await smartAccountService.buildExecuteCallUserOp(to, data, value ? value.toString() : '0');
 
     // Ensure smart account is deployed and get initCode if needed
-    userOp.initCode = await smartAccountService.ensureDeployedSmartAccount(smartAccountAddress, ownerAddress);
+    userOpStruct.initCode = await smartAccountService.ensureDeployedSmartAccount(await Promise.resolve(userOpStruct.sender));
 
     // Fill nonce
-    userOp.nonce = await fillNonce(env.ENTRY_POINT_ADDRESS, smartAccountAddress, provider);
+    userOpStruct = await (bundlerClient as any).fillNonce(userOpStruct); // Cast to any for now
 
-    // Get paymaster data (sponsorship)
-    userOp = await ensurePaymaster({ userOp, paymasterService });
-
-    // Fill gas estimates
-    userOp = await fillGas({ bundlerClient, userOp, entryPointAddress: env.ENTRY_POINT_ADDRESS });
+    // Get paymaster data (sponsorship) and fill gas estimates
+    const partialUserOp: Partial<UserOperation> = {
+      sender: await Promise.resolve(userOpStruct.sender),
+      nonce: userOpStruct.nonce.toString(),
+      initCode: ethers.hexlify(await Promise.resolve(userOpStruct.initCode)),
+      callData: ethers.hexlify(await Promise.resolve(userOpStruct.callData)),
+      callGasLimit: userOpStruct.callGasLimit.toString(),
+      verificationGasLimit: userOpStruct.verificationGasLimit.toString(),
+      preVerificationGas: userOpStruct.preVerificationGas.toString(),
+      maxFeePerGas: userOpStruct.maxFeePerGas.toString(),
+      maxPriorityFeePerGas: userOpStruct.maxPriorityFeePerGas.toString(),
+      paymasterAndData: ethers.hexlify(await Promise.resolve(userOpStruct.paymasterAndData)),
+      signature: ethers.hexlify(await Promise.resolve(userOpStruct.signature)),
+    };
+    const paymasterResult = await paymasterService.getPaymasterData(partialUserOp);
+    userOpStruct.paymasterAndData = paymasterResult.paymasterAndData;
+    userOpStruct.preVerificationGas = BigInt(paymasterResult.preVerificationGas);
+    userOpStruct.verificationGasLimit = BigInt(paymasterResult.verificationGasLimit);
+    userOpStruct.callGasLimit = BigInt(paymasterResult.callGasLimit);
+    userOpStruct.maxFeePerGas = BigInt(paymasterResult.maxFeePerGas);
+    userOpStruct.maxPriorityFeePerGas = BigInt(paymasterResult.maxPriorityFeePerGas);
 
     // Sign the UserOperation
-    const signer = await getSigner(orgId, true); // Try to use session key, fallback to owner
+    const signer = await getSigner(ownerAddress);
     if (!signer) {
       return res.status(500).json({ error: 'No signer available for user operation.' });
     }
-    userOp.signature = await signUserOp({
-      userOp,
-      signer,
-      entryPointAddress: env.ENTRY_POINT_ADDRESS,
-      chainId: BigInt(env.CHAIN_ID),
-    });
+    userOpStruct.signature = await signer.signMessage(ethers.getBytes(computeUserOpHash(userOpStruct, currentChainConfig.entryPointAddress, BigInt(env.CHAIN_ID))));
 
-    const userOpHash = await bundlerClient.sendUserOperation(userOp, env.ENTRY_POINT_ADDRESS);
+    const userOpHash = await (bundlerClient as any).sendUserOperation(userOpStruct); // Cast to any for now
     logger.info(`Sponsored UserOp submitted: ${userOpHash}`);
 
     let txHash: string | undefined;
     try {
-      const receipt = await bundlerClient.getUserOperationReceipt(userOpHash);
+      const receipt = await (bundlerClient as any).pollUserOperationReceipt(userOpHash); // Cast to any for now
       txHash = receipt.receipt.transactionHash;
       logger.info(`Sponsored UserOp confirmed with tx hash: ${txHash}`);
     } catch (receiptError: any) {
@@ -350,9 +343,10 @@ router.post('/sponsor-and-send', authenticateUser, async (req: Request, res: Res
 // GET /api/aa/session/status → list active sessions for current user
 router.get('/session/status', authenticateUser, async (req: Request, res: Response) => {
   try {
-    const orgId = req.user!.orgId;
-    const activeSessions = await sessionKeyService.getActiveSessionKeys(orgId);
-    res.json(activeSessions.map(session => ({
+    const ownerAddress = req.user!.ownerAddress!;
+    const sessionKeyService = new SessionKeyService(ownerAddress);
+    const activeSessions = await (sessionKeyService as any).getActiveSessionKeys(ownerAddress); // Cast to any for now
+    res.json(activeSessions.map((session: any) => ({ // Explicitly type session as any for now
       id: session.id,
       publicKey: session.publicKey,
       scope: session.scope,
@@ -364,5 +358,8 @@ router.get('/session/status', authenticateUser, async (req: Request, res: Respon
     res.status(500).json({ error: 'Failed to fetch session status.' });
   }
 });
+
+// Wire the new client-side signing routes
+router.use(aaClientSignRoutes);
 
 export default router;

@@ -12,13 +12,17 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:api": "vitest run -r src/tests",
-    "e2e:api": "vitest run -r api/src/tests/e2e",
+    "e2e:api": "vitest run -r src/tests/e2e",
+    "migrate": "ts-node scripts/runMigrations.ts",
     "aa:health": "ts-node scripts/aa/health.ts",
+    "canary:aa": "ts-node scripts/canary/sponsoredUserOpCanary.ts",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix"
   },
   "dependencies": {
     "@account-abstraction/contracts": "^0.6.0",
+    "@biconomy/account": "^4.0.0",
+    "@biconomy/modules": "^4.0.0",
     "@huggingface/inference": "^2.6.4",
     "archiver": "^5.3.2",
     "axios": "^1.6.2",
@@ -29,6 +33,7 @@
     "dotenv": "^16.3.1",
     "ethers": "^6.8.1",
     "express": "^4.18.2",
+    "@privy-io/server-auth": "^1.60.0",
     "express-rate-limit": "^7.1.5",
     "express-validator": "^7.0.1",
     "fluent-ffmpeg": "^2.1.2",
@@ -48,7 +53,8 @@
     "uuid": "^9.0.1",
     "viem": "^2.34.0",
     "weaviate-ts-client": "^1.5.0",
-    "winston": "^3.11.0"
+    "winston": "^3.11.0",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@types/archiver": "^5.3.4",
@@ -75,7 +81,8 @@
     "ts-jest": "^29.1.1",
     "ts-node": "^10.9.1",
     "typescript": "^5.2.2",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "@types/zod": "^3.22.4"
   },
   "keywords": [
     "reelverse",

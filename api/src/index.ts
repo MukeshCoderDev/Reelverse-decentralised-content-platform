@@ -3,16 +3,17 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import compression from 'compression';
-import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import { rateLimit } from './middleware/rateLimit';
+import { parseRateLimit } from './utils/rateLimitParser';
+import { env } from './config/env';
+import { requirePrivyAuth } from './middleware/authPrivy';
 
 import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFoundHandler';
-import { 
-  unifiedErrorHandler, 
-  correlationIdMiddleware, 
-  idempotencyMiddleware 
-} from './middleware/unifiedErrorHandler';
+import { unifiedErrorHandler } from './middleware/unifiedErrorHandler';
+import { correlationIdMiddleware } from './middleware/correlationId'; // Correct import
+import { idempotencyMiddleware } from './middleware/idempotency';   // Correct import
 import { logger } from './utils/logger';
 import { connectDatabase } from './config/database';
 import { connectRedis } from './config/redis';
@@ -44,7 +45,7 @@ import advancedSearchRoutes from './routes/advancedSearch';
 import agencyConciergeRoutes from './routes/agencyConcierge';
 import sloRoutes from './routes/slo';
 import statusRoutes from './routes/status';
-import enhancedFeatureFlagRoutes from '../routes/enhancedFeatureFlags';
+import enhancedFeatureFlagRoutes from './routes/enhancedFeatureFlags'; // Corrected path after move
 import privacyRoutes from './routes/privacy';
 import paymentComplianceRoutes from './routes/paymentCompliance';
 import aiGovernanceRoutes from './routes/aiGovernance';
@@ -55,6 +56,9 @@ import coordinatorRoutes from './routes/coordinator';
 import smartAccountsAdmin from './routes/admin/smartAccounts';
 import reconcilerAdmin from './routes/admin/reconciler';
 import aaRoutes from './routes/aa';
+import aaClientSignRoutes from './routes/aaClientSign'; // Import new AA client signing routes
+import billingRoutes from './routes/billing'; // Import new billing routes
+import docsRoutes from './routes/docs'; // Import docs routes
 
 // Load environment variables
 dotenv.config();
@@ -96,22 +100,9 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'), // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'),
-  message: {
-    error: 'Too many requests from this IP, please try again later.',
-    retryAfter: '15 minutes'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use(limiter);
 
 // Enhanced middleware
 app.use(correlationIdMiddleware);
-app.use(idempotencyMiddleware);
 
 // Body parsing middleware
 app.use(compression());
@@ -132,9 +123,9 @@ app.get('/health', async (req: Request, res: Response) => {
   try {
     const aiHealth = await aiServiceManager.healthCheck();
     const infraHealth = await infrastructure.healthCheck();
-    
+
     const overallHealthy = aiHealth.status === 'healthy' && infraHealth.healthy;
-    
+
     res.status(overallHealthy ? 200 : 503).json({
       status: overallHealthy ? 'healthy' : 'degraded',
       timestamp: new Date().toISOString(),
@@ -195,7 +186,18 @@ app.use(`/api/${API_VERSION}/finalizer`, finalizerRoutes);
 app.use(`/api/${API_VERSION}/coordinator`, coordinatorRoutes);
 app.use(`/api/${API_VERSION}/admin/smart-accounts`, smartAccountsAdmin);
 app.use(`/api/${API_VERSION}/admin/reconciler`, reconcilerAdmin);
-app.use(`/api/${API_VERSION}/aa`, aaRoutes);
+
+if (env.AUTH_PROVIDER === 'privy') {
+  app.use(`/api/${API_VERSION}/aa`, requirePrivyAuth, aaClientSignRoutes); // Use new client signing routes
+  app.use(`/api/${API_VERSION}/billing`, requirePrivyAuth, billingRoutes);
+  app.use(`/api/${API_VERSION}/upload`, requirePrivyAuth, uploadRoutes);
+} else {
+  app.use(`/api/${API_VERSION}/aa`, aaRoutes); // Keep existing server-side signing for dev
+  app.use(`/api/${API_VERSION}/billing`, billingRoutes);
+  app.use(`/api/${API_VERSION}/upload`, uploadRoutes);
+}
+
+app.use(`/api/${API_VERSION}`, docsRoutes); // Add docs routes
 
 // Error handling middleware
 app.use(notFoundHandler);

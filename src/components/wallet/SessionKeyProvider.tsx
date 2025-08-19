@@ -24,17 +24,16 @@ export const SessionKeyProvider: React.FC<{ children: ReactNode }> = ({ children
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Mock implementation for now
   const fetchAccountDetails = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await axios.get('/api/aa/account');
+      // In a real app, this would fetch from your backend
+      const response = await axios.get('/api/v1/aa/account');
       setSmartAccountAddress(response.data.smartAccountAddress);
-
       if (response.data.sessionKeyManagerSupported) {
-        // Check for active sessions
-        const sessionStatusResponse = await axios.get('/api/aa/session/status');
+        const sessionStatusResponse = await axios.get('/api/v1/aa/session/status');
         if (sessionStatusResponse.data && sessionStatusResponse.data.length > 0) {
-          // Assuming only one active session for simplicity, or pick the latest
           setSessionKeyInfo(sessionStatusResponse.data[0]);
         }
       }
@@ -51,20 +50,12 @@ export const SessionKeyProvider: React.FC<{ children: ReactNode }> = ({ children
   }, []);
 
   const createSessionKey = async (ttlMins: number, scope: any) => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      const response = await axios.post('/api/aa/session/create', { ttlMins, scope });
-      if (response.data.supported === false) {
-        setError(response.data.message);
-        return;
-      }
-      setSessionKeyInfo({
-        id: response.data.sessionKeyId,
-        publicKey: response.data.publicKey,
-        expiresAt: response.data.expiresAt,
-        scope: scope,
-      });
+      // In a real app, this would call your backend to create a session key
+      const response = await axios.post('/api/v1/aa/session/create', { ttlMins, scope });
+      setSessionKeyInfo(response.data);
       console.log('Session key created:', response.data);
     } catch (err: any) {
       console.error('Error creating session key:', err);
@@ -75,16 +66,13 @@ export const SessionKeyProvider: React.FC<{ children: ReactNode }> = ({ children
   };
 
   const revokeSessionKey = async (sessionKeyId: string) => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      const response = await axios.post('/api/aa/session/revoke', { sessionKeyId });
-      if (response.data.supported === false) {
-        setError(response.data.message);
-        return;
-      }
+      // In a real app, this would call your backend to revoke a session key
+      await axios.post('/api/v1/aa/session/revoke', { sessionKeyId });
       setSessionKeyInfo(null);
-      console.log('Session key revoked:', response.data);
+      console.log('Session key revoked:', sessionKeyId);
     } catch (err: any) {
       console.error('Error revoking session key:', err);
       setError(err.response?.data?.error || 'Failed to revoke session key.');
