@@ -54,6 +54,7 @@ import finalizerRoutes from './routes/finalizer';
 import coordinatorRoutes from './routes/coordinator';
 import smartAccountsAdmin from './routes/admin/smartAccounts';
 import reconcilerAdmin from './routes/admin/reconciler';
+import aaRoutes from './routes/aa';
 
 // Load environment variables
 dotenv.config();
@@ -194,6 +195,7 @@ app.use(`/api/${API_VERSION}/finalizer`, finalizerRoutes);
 app.use(`/api/${API_VERSION}/coordinator`, coordinatorRoutes);
 app.use(`/api/${API_VERSION}/admin/smart-accounts`, smartAccountsAdmin);
 app.use(`/api/${API_VERSION}/admin/reconciler`, reconcilerAdmin);
+app.use(`/api/${API_VERSION}/aa`, aaRoutes);
 
 // Error handling middleware
 app.use(notFoundHandler);

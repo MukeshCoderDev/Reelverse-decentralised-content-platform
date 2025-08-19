@@ -1,36 +1,11 @@
 import axios from 'axios';
 import { PaymasterResult, UserOperation } from './paymasterService';
-
-export interface BiconomyConfig {
-  apiKey: string;
-  bundlerUrl: string;
-  paymasterUrl: string;
-  chainId: number;
-  dappId: string;
-}
-
-export interface BiconomyPaymasterResponse {
-  paymasterAndData: string;
-  preVerificationGas: string;
-  verificationGasLimit: string;
-  callGasLimit: string;
-  maxFeePerGas: string;
-  maxPriorityFeePerGas: string;
-}
-
-export interface AlchemyConfig {
-  apiKey: string;
-  policyId: string;
-  rpcUrl: string;
-  chainId: number;
-}
+import { env } from '../../config/env';
+import { currentChainConfig } from '../../config/chain';
 
 export class BiconomyPaymasterService {
-  private config: BiconomyConfig;
-
-  constructor(config: BiconomyConfig) {
-    this.config = config;
-  }
+ 
+  constructor() {}
 
   /**
    * Get paymaster data from Biconomy
@@ -39,8 +14,12 @@ export class BiconomyPaymasterService {
     try {
       console.log('Getting paymaster data from Biconomy');
 
+      if (!env.BICONOMY_PAYMASTER_URL || !env.BICONOMY_API_KEY) {
+        throw new Error('Biconomy paymaster URL or API key is not configured in environment variables.');
+      }
+
       const response = await axios.post(
-        `${this.config.paymasterUrl}/api/v1/paymaster`,
+        `${env.BICONOMY_PAYMASTER_URL}/api/v1/paymaster`,
         {
           method: 'pm_sponsorUserOperation',
           params: [
@@ -67,7 +46,7 @@ export class BiconomyPaymasterService {
         {
           headers: {
             'Content-Type': 'application/json',
-            'x-api-key': this.config.apiKey
+            'x-api-key': env.BICONOMY_API_KEY
           }
         }
       );
@@ -87,7 +66,7 @@ export class BiconomyPaymasterService {
         maxPriorityFeePerGas: result.maxPriorityFeePerGas
       };
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Biconomy paymaster request failed:', error);
       throw new Error(`Failed to get Biconomy paymaster data: ${error.message}`);
     }
@@ -100,19 +79,23 @@ export class BiconomyPaymasterService {
     try {
       console.log('Submitting user operation via Biconomy bundler');
 
+      if (!env.BICONOMY_BUNDLER_URL || !env.BICONOMY_API_KEY) {
+        throw new Error('Biconomy bundler URL or API key is not configured in environment variables.');
+      }
+
       const response = await axios.post(
-        `${this.config.bundlerUrl}/api/v1/bundler`,
+        `${env.BICONOMY_BUNDLER_URL}/api/v1/bundler`,
         {
           method: 'eth_sendUserOperation',
           params: [
             userOp,
-            this.config.chainId
+            currentChainConfig.chainId
           ]
         },
         {
           headers: {
             'Content-Type': 'application/json',
-            'x-api-key': this.config.apiKey
+            'x-api-key': env.BICONOMY_API_KEY
           }
         }
       );
@@ -126,7 +109,7 @@ export class BiconomyPaymasterService {
       
       return userOpHash;
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Biconomy bundler submission failed:', error);
       throw new Error(`Failed to submit user operation: ${error.message}`);
     }
@@ -137,8 +120,11 @@ export class BiconomyPaymasterService {
    */
   async getUserOperationReceipt(userOpHash: string): Promise<any> {
     try {
+      if (!env.BICONOMY_BUNDLER_URL || !env.BICONOMY_API_KEY) {
+        throw new Error('Biconomy bundler URL or API key is not configured in environment variables.');
+      }
       const response = await axios.post(
-        `${this.config.bundlerUrl}/api/v1/bundler`,
+        `${env.BICONOMY_BUNDLER_URL}/api/v1/bundler`,
         {
           method: 'eth_getUserOperationReceipt',
           params: [userOpHash]
@@ -146,14 +132,14 @@ export class BiconomyPaymasterService {
         {
           headers: {
             'Content-Type': 'application/json',
-            'x-api-key': this.config.apiKey
+            'x-api-key': env.BICONOMY_API_KEY
           }
         }
       );
 
       return response.data.result;
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to get user operation receipt:', error);
       throw error;
     }
@@ -164,8 +150,11 @@ export class BiconomyPaymasterService {
    */
   async getSupportedEntryPoints(): Promise<string[]> {
     try {
+      if (!env.BICONOMY_BUNDLER_URL || !env.BICONOMY_API_KEY) {
+        throw new Error('Biconomy bundler URL or API key is not configured in environment variables.');
+      }
       const response = await axios.post(
-        `${this.config.bundlerUrl}/api/v1/bundler`,
+        `${env.BICONOMY_BUNDLER_URL}/api/v1/bundler`,
         {
           method: 'eth_supportedEntryPoints',
           params: []
@@ -173,14 +162,14 @@ export class BiconomyPaymasterService {
         {
           headers: {
             'Content-Type': 'application/json',
-            'x-api-key': this.config.apiKey
+            'x-api-key': env.BICONOMY_API_KEY
           }
         }
       );
 
       return response.data.result;
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to get supported entry points:', error);
       throw error;
     }
@@ -188,11 +177,8 @@ export class BiconomyPaymasterService {
 }
 
 export class AlchemyPaymasterService {
-  private config: AlchemyConfig;
-
-  constructor(config: AlchemyConfig) {
-    this.config = config;
-  }
+ 
+  constructor() {}
 
   /**
    * Get paymaster data from Alchemy
@@ -201,16 +187,20 @@ export class AlchemyPaymasterService {
     try {
       console.log('Getting paymaster data from Alchemy');
 
+      if (!env.ALCHEMY_RPC_URL || !env.ALCHEMY_API_KEY || !env.ALCHEMY_POLICY_ID) {
+        throw new Error('Alchemy RPC URL, API key, or Policy ID is not configured in environment variables.');
+      }
+
       const response = await axios.post(
-        this.config.rpcUrl,
+        env.ALCHEMY_RPC_URL,
         {
           jsonrpc: '2.0',
           id: 1,
           method: 'alchemy_requestPaymasterAndData',
           params: [
             {
-              policyId: this.config.policyId,
-              entryPoint: '0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789',
+              policyId: env.ALCHEMY_POLICY_ID,
+              entryPoint: currentChainConfig.entryPointAddress,
               userOperation: {
                 sender: userOp.sender,
                 nonce: userOp.nonce,
@@ -228,11 +218,10 @@ export class AlchemyPaymasterService {
         {
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.config.apiKey}`
+            'Authorization': `Bearer ${env.ALCHEMY_API_KEY}`
           }
         }
       );
-
       if (response.data.error) {
         throw new Error(`Alchemy error: ${response.data.error.message}`);
       }
@@ -248,7 +237,7 @@ export class AlchemyPaymasterService {
         maxPriorityFeePerGas: result.maxPriorityFeePerGas
       };
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Alchemy paymaster request failed:', error);
       throw new Error(`Failed to get Alchemy paymaster data: ${error.message}`);
     }
@@ -261,21 +250,25 @@ export class AlchemyPaymasterService {
     try {
       console.log('Submitting user operation via Alchemy');
 
+      if (!env.ALCHEMY_RPC_URL || !env.ALCHEMY_API_KEY) {
+        throw new Error('Alchemy RPC URL or API key is not configured in environment variables.');
+      }
+
       const response = await axios.post(
-        this.config.rpcUrl,
+        env.ALCHEMY_RPC_URL,
         {
           jsonrpc: '2.0',
           id: 1,
           method: 'eth_sendUserOperation',
           params: [
             userOp,
-            '0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789' // EntryPoint address
+            currentChainConfig.entryPointAddress
           ]
         },
         {
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.config.apiKey}`
+            'Authorization': `Bearer ${env.ALCHEMY_API_KEY}`
           }
         }
       );
@@ -289,7 +282,7 @@ export class AlchemyPaymasterService {
       
       return userOpHash;
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Alchemy submission failed:', error);
       throw new Error(`Failed to submit user operation via Alchemy: ${error.message}`);
     }
@@ -300,28 +293,30 @@ export class AlchemyPaymasterService {
    */
   async estimateUserOperationGas(userOp: Partial<UserOperation>): Promise<any> {
     try {
+      if (!env.ALCHEMY_RPC_URL || !env.ALCHEMY_API_KEY) {
+        throw new Error('Alchemy RPC URL or API key is not configured in environment variables.');
+      }
       const response = await axios.post(
-        this.config.rpcUrl,
+        env.ALCHEMY_RPC_URL,
         {
           jsonrpc: '2.0',
           id: 1,
           method: 'eth_estimateUserOperationGas',
           params: [
             userOp,
-            '0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789'
+            currentChainConfig.entryPointAddress
           ]
         },
         {
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.config.apiKey}`
+            'Authorization': `Bearer ${env.ALCHEMY_API_KEY}`
           }
         }
       );
-
       return response.data.result;
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Alchemy gas estimation failed:', error);
       throw error;
     }
@@ -336,20 +331,20 @@ export class UnifiedPaymasterService {
   private alchemy?: AlchemyPaymasterService;
   private preferredProvider: 'biconomy' | 'alchemy';
 
-  constructor(
-    biconomyConfig?: BiconomyConfig,
-    alchemyConfig?: AlchemyConfig,
-    preferredProvider: 'biconomy' | 'alchemy' = 'biconomy'
-  ) {
-    if (biconomyConfig) {
-      this.biconomy = new BiconomyPaymasterService(biconomyConfig);
+  constructor() {
+    if (env.WALLETLESS_PROVIDER === 'biconomy' || env.WALLETLESS_PROVIDER === 'alchemy') {
+      this.preferredProvider = env.WALLETLESS_PROVIDER;
+    } else {
+      this.preferredProvider = 'biconomy'; // Default to Biconomy if local or unknown
     }
     
-    if (alchemyConfig) {
-      this.alchemy = new AlchemyPaymasterService(alchemyConfig);
+    if (env.BICONOMY_API_KEY && env.BICONOMY_BUNDLER_URL && env.BICONOMY_PAYMASTER_URL) {
+      this.biconomy = new BiconomyPaymasterService();
     }
-
-    this.preferredProvider = preferredProvider;
+    
+    if (env.ALCHEMY_API_KEY && env.ALCHEMY_POLICY_ID && env.ALCHEMY_RPC_URL) {
+      this.alchemy = new AlchemyPaymasterService();
+    }
   }
 
   /**
@@ -365,7 +360,7 @@ export class UnifiedPaymasterService {
         } else if (provider === 'alchemy' && this.alchemy) {
           return await this.alchemy.getPaymasterData(userOp);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.warn(`${provider} paymaster failed, trying next provider:`, error.message);
         continue;
       }
@@ -387,7 +382,7 @@ export class UnifiedPaymasterService {
         } else if (provider === 'alchemy' && this.alchemy) {
           return await this.alchemy.submitUserOperation(userOp);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.warn(`${provider} submission failed, trying next provider:`, error.message);
         continue;
       }
@@ -417,7 +412,7 @@ export class UnifiedPaymasterService {
       try {
         await this.biconomy.getSupportedEntryPoints();
         health.biconomy = true;
-      } catch (error) {
+      } catch (error: any) {
         console.warn('Biconomy health check failed:', error.message);
       }
     }
@@ -431,7 +426,7 @@ export class UnifiedPaymasterService {
           callData: '0x'
         });
         health.alchemy = true;
-      } catch (error) {
+      } catch (error: any) {
         // Expected to fail with invalid data, but service should be reachable
         if (error.message.includes('invalid') || error.message.includes('revert')) {
           health.alchemy = true;
@@ -444,19 +439,3 @@ export class UnifiedPaymasterService {
     return health;
   }
 }
-
-// Default configurations
-export const DEFAULT_BICONOMY_CONFIG: BiconomyConfig = {
-  apiKey: process.env.BICONOMY_API_KEY || '',
-  bundlerUrl: process.env.BICONOMY_BUNDLER_URL || 'https://bundler.biconomy.io',
-  paymasterUrl: process.env.BICONOMY_PAYMASTER_URL || 'https://paymaster.biconomy.io',
-  chainId: 137, // Polygon
-  dappId: process.env.BICONOMY_DAPP_ID || ''
-};
-
-export const DEFAULT_ALCHEMY_CONFIG: AlchemyConfig = {
-  apiKey: process.env.ALCHEMY_API_KEY || '',
-  policyId: process.env.ALCHEMY_POLICY_ID || '',
-  rpcUrl: process.env.ALCHEMY_RPC_URL || 'https://polygon-mainnet.g.alchemy.com/v2/',
-  chainId: 137 // Polygon
-};

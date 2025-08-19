@@ -1,36 +1,94 @@
-import * as crypto from 'crypto';
 import { getDatabase } from '../../config/database';
-
-const MASTER_KEY = process.env.SMART_ACCOUNT_MASTER_KEY || '';
-if (!MASTER_KEY) {
-  // Not throwing at module load to allow environments without master key during dev.
-}
+import { env } from '../../config/env';
+import { currentChainConfig } from '../../config/chain';
+import { ethers } from 'ethers';
+import { logger } from '../../utils/logger';
+import { EntryPoint__factory, SimpleAccountFactory__factory } from '@account-abstraction/contracts';
+import { encryptionService } from '../../utils/encryption';
 
 export class SmartAccountService {
-  masterKey: Buffer | null;
+  private provider: ethers.JsonRpcProvider;
+  private entryPointContract: ethers.Contract;
+
   constructor() {
-    this.masterKey = MASTER_KEY ? Buffer.from(MASTER_KEY, 'hex') : null;
+    this.provider = new ethers.JsonRpcProvider(currentChainConfig.rpcUrl);
+    this.entryPointContract = new ethers.Contract(
+      currentChainConfig.entryPointAddress,
+      EntryPoint__factory.abi,
+      this.provider
+    );
   }
 
-  encryptPrivateKey(plain: string) {
-    if (!this.masterKey) throw new Error('SMART_ACCOUNT_MASTER_KEY not configured');
-    const iv = crypto.randomBytes(12);
-    const cipher = crypto.createCipheriv('aes-256-gcm', this.masterKey, iv);
-    const encrypted = Buffer.concat([cipher.update(Buffer.from(plain, 'utf8')), cipher.final()]);
-    const tag = cipher.getAuthTag();
-    return Buffer.concat([iv, tag, encrypted]).toString('hex');
+  encryptPrivateKey(plain: string): string {
+    return encryptionService.encrypt(plain);
   }
 
-  decryptPrivateKey(encHex: string) {
-    if (!this.masterKey) throw new Error('SMART_ACCOUNT_MASTER_KEY not configured');
-    const data = Buffer.from(encHex, 'hex');
-    const iv = data.slice(0,12);
-    const tag = data.slice(12,28);
-    const encrypted = data.slice(28);
-    const decipher = crypto.createDecipheriv('aes-256-gcm', this.masterKey, iv);
-    decipher.setAuthTag(tag);
-    const plain = Buffer.concat([decipher.update(encrypted), decipher.final()]);
-    return plain.toString('utf8');
+  decryptPrivateKey(encHex: string): string {
+    return encryptionService.decrypt(encHex);
+  }
+
+  /**
+   * Generates a counterfactual smart account address for a given owner.
+   * This address is deterministic and does not require on-chain deployment.
+   * @param ownerAddress The address of the EOA owner of the smart account.
+   * @returns The counterfactual smart account address.
+   */
+  async getCounterfactualAddress(ownerAddress: string): Promise<string> {
+    const factory = new ethers.Contract(
+      env.SIMPLE_ACCOUNT_FACTORY_ADDRESS,
+      SimpleAccountFactory__factory.abi,
+      this.provider
+    );
+    const salt = 0; // Using a fixed salt for simplicity, can be derived from ownerAddress
+    const initCode = ethers.solidityPacked(
+      ['address', 'bytes'],
+      [
+        env.SIMPLE_ACCOUNT_FACTORY_ADDRESS,
+        factory.interface.encodeFunctionData('createAccount', [ownerAddress, salt]),
+      ]
+    );
+    const senderAddress = await this.entryPointContract.getSenderAddress(initCode);
+    return senderAddress;
+  }
+
+  /**
+   * Builds the initCode for deploying a smart account.
+   * This is used in the first UserOperation to deploy the account on-chain.
+   * @param ownerAddress The address of the EOA owner.
+   * @returns The initCode as a hex string.
+   */
+  async buildInitCode(ownerAddress: string): Promise<string> {
+    const factory = new ethers.Contract(
+      env.SIMPLE_ACCOUNT_FACTORY_ADDRESS,
+      SimpleAccountFactory__factory.abi,
+      this.provider
+    );
+    const salt = 0; // Using a fixed salt for simplicity, can be derived from ownerAddress
+    const initCode = ethers.solidityPacked(
+      ['address', 'bytes'],
+      [
+        env.SIMPLE_ACCOUNT_FACTORY_ADDRESS,
+        factory.interface.encodeFunctionData('createAccount', [ownerAddress, salt]),
+      ]
+    );
+    return initCode;
+  }
+
+  /**
+   * Ensures the smart account is deployed. If not, it returns the initCode
+   * to be included in the first UserOperation.
+   * @param smartAccountAddress The address of the smart account.
+   * @param ownerAddress The address of the EOA owner.
+   * @returns initCode if the account is not deployed, otherwise '0x'.
+   */
+  async ensureDeployedSmartAccount(smartAccountAddress: string, ownerAddress: string): Promise<string> {
+    const code = await this.provider.getCode(smartAccountAddress);
+    if (code === '0x') {
+      logger.info(`Smart account ${smartAccountAddress} not deployed, building initCode.`);
+      return this.buildInitCode(ownerAddress);
+    }
+    logger.info(`Smart account ${smartAccountAddress} already deployed.`);
+    return '0x';
   }
 
   async createSmartAccount(orgId: string, privateKey: string, address: string) {
@@ -38,7 +96,13 @@ export class SmartAccountService {
     const client = await pool.connect();
     try {
       const enc = this.encryptPrivateKey(privateKey);
-      await client.query(`INSERT INTO smart_accounts(org_id, address, encrypted_private_key) VALUES($1,$2,$3) ON CONFLICT (org_id) DO UPDATE SET address = EXCLUDED.address, encrypted_private_key = EXCLUDED.encrypted_private_key`, [orgId, address, enc]);
+      // Never log secrets
+      await client.query(
+        `INSERT INTO smart_accounts(org_id, address, encrypted_private_key)
+         VALUES($1,$2,$3)
+         ON CONFLICT (org_id) DO UPDATE SET address = EXCLUDED.address, encrypted_private_key = EXCLUDED.encrypted_private_key`,
+        [orgId, address, enc]
+      );
     } finally {
       client.release();
     }
@@ -51,7 +115,19 @@ export class SmartAccountService {
       const res = await client.query(`SELECT encrypted_private_key FROM smart_accounts WHERE org_id=$1 LIMIT 1`, [orgId]);
       if (res.rowCount === 0) return null;
       return this.decryptPrivateKey(res.rows[0].encrypted_private_key);
-    } finally { client.release(); }
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Checks if a smart account is deployed on-chain.
+   * @param smartAccountAddress The address of the smart account.
+   * @returns True if deployed, false otherwise.
+   */
+  async isSmartAccountDeployed(smartAccountAddress: string): Promise<boolean> {
+    const code = await this.provider.getCode(smartAccountAddress);
+    return code !== '0x';
   }
 }
 

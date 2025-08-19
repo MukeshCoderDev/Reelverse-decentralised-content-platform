@@ -4,6 +4,8 @@ import { polygon } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import { logger } from '../utils/logger';
 import { RedisService } from '../config/redis';
+import { env } from '../config/env';
+import { currentChainConfig } from '../config/chain';
 
 // Contract ABIs (minimal required functions)
 const USDC_ABI = [
@@ -66,29 +68,25 @@ export class USDCPaymentService {
   private publicClient;
   private walletClient;
   private redisService: RedisService;
-  
-  // Contract addresses (should be in environment variables)
-  private readonly USDC_ADDRESS = process.env.USDC_CONTRACT_ADDRESS || '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'; // Polygon USDC
-  private readonly REVENUE_SPLITTER_ADDRESS = process.env.REVENUE_SPLITTER_ADDRESS!;
-  private readonly NFT_ACCESS_ADDRESS = process.env.NFT_ACCESS_ADDRESS!;
-  private readonly CONTENT_REGISTRY_ADDRESS = process.env.CONTENT_REGISTRY_ADDRESS!;
-  private readonly PLATFORM_WALLET = process.env.PLATFORM_WALLET_ADDRESS!;
-
+  // Contract addresses
+  private readonly USDC_ADDRESS = env.USDC_CONTRACT_ADDRESS;
+  private readonly REVENUE_SPLITTER_ADDRESS = env.REVENUE_SPLITTER_ADDRESS;
+  private readonly NFT_ACCESS_ADDRESS = env.NFT_ACCESS_ADDRESS;
+  private readonly CONTENT_REGISTRY_ADDRESS = env.CONTENT_REGISTRY_ADDRESS;
+  private readonly PLATFORM_WALLET = env.PLATFORM_WALLET_ADDRESS;
+ 
   constructor() {
-    // Initialize Viem clients
     this.publicClient = createPublicClient({
-      chain: polygon,
-      transport: http(process.env.POLYGON_RPC_URL)
+      chain: polygon, // Assuming Polygon for USDC payments
+      transport: http(currentChainConfig.rpcUrl)
     });
-
+ 
     // Initialize wallet client for backend transactions
-    const account = privateKeyToAccount(process.env.PLATFORM_PRIVATE_KEY as `0x${string}`);
+    const account = privateKeyToAccount(env.PLATFORM_PRIVATE_KEY as `0x${string}`);
     this.walletClient = createWalletClient({
-      account,
-      chain: polygon,
-      transport: http(process.env.POLYGON_RPC_URL)
+      chain: polygon, // Assuming Polygon for USDC payments
+      transport: http(currentChainConfig.rpcUrl)
     });
-
     this.redisService = new RedisService();
   }
 
