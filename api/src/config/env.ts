@@ -68,6 +68,8 @@ interface EnvConfig {
   CHAIN_ID: number;
   SIMPLE_ACCOUNT_FACTORY_ADDRESS: string;
   SESSION_KEY_MANAGER_ADDRESS: string; // New environment variable
+  DEV_OWNER_PRIVATE_KEY?: string; // dev/test only; required for E2E if session key manager is not configured
+  BUNDLER_URL?: string;
 }
 
 const getEnv = (): EnvConfig => {
@@ -99,6 +101,15 @@ const getEnv = (): EnvConfig => {
       // In a real app, you might throw an error or exit here
       // For now, we'll just log and proceed with undefined/defaults
     }
+  }
+
+  // Conditionally check DEV_OWNER_PRIVATE_KEY if SESSION_KEY_MANAGER_ADDRESS is not set
+  if (!env.SESSION_KEY_MANAGER_ADDRESS && !env.DEV_OWNER_PRIVATE_KEY) {
+    logger.warn('DEV_OWNER_PRIVATE_KEY is recommended for E2E/dev when SESSION_KEY_MANAGER_ADDRESS is not configured.');
+  }
+
+  if (!env.BUNDLER_URL) {
+    logger.error('Missing required environment variable: BUNDLER_URL');
   }
 
   return {
@@ -166,6 +177,8 @@ const getEnv = (): EnvConfig => {
     CHAIN_ID: parseInt(env.CHAIN_ID || '11155111'), // Default to Sepolia
     SIMPLE_ACCOUNT_FACTORY_ADDRESS: env.SIMPLE_ACCOUNT_FACTORY_ADDRESS || '0x9406Cc6185a346906296840746129e125aF35fEd', // Default SimpleAccountFactory address for Sepolia
     SESSION_KEY_MANAGER_ADDRESS: env.SESSION_KEY_MANAGER_ADDRESS || '0x0000000000000000000000000000000000000007', // Placeholder
+    DEV_OWNER_PRIVATE_KEY: env.DEV_OWNER_PRIVATE_KEY,
+    BUNDLER_URL: env.BUNDLER_URL,
   };
 };
 

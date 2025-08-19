@@ -12,6 +12,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:api": "vitest run -r src/tests",
+    "e2e:api": "vitest run -r api/src/tests/e2e",
+    "aa:health": "ts-node scripts/aa/health.ts",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix"
   },
