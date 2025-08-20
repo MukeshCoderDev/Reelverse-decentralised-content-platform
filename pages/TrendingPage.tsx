@@ -1,11 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
+import { useLocation, Link } from 'react-router-dom';
 import { PageHeader } from '../components/layout/PageHeader';
 import { TrendingGrid } from '../components/feeds/TrendingGrid';
 import { fetchTrending } from '../lib/fetchers';
 import { Content } from '../types';
 import Icon from '../components/Icon';
 import Button from '../components/Button';
+import { useReturnTo } from '../src/hooks/useReturnTo';
 
 type Category = 'all' | 'gaming' | 'music' | 'tech' | 'education' | 'entertainment' | 'sports' | 'news';
 
@@ -42,12 +44,20 @@ const TrendingPage: React.FC = () => {
         { id: 'news', label: 'News', icon: 'newspaper' },
     ];
 
+    const location = useLocation();
+    const { saveScroll, restoreScroll } = useReturnTo();
+
     useEffect(() => {
+        restoreScroll(location.pathname);
         setLoading(true);
         fetchTrending()
             .then(setItems)
             .finally(() => setLoading(false));
-    }, [activeCategory]);
+
+        return () => {
+            saveScroll(location.pathname, window.scrollY);
+        };
+    }, [activeCategory, location.pathname, saveScroll, restoreScroll]);
 
     return (
         <div className="min-h-screen bg-background">

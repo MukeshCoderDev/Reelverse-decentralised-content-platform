@@ -1,19 +1,15 @@
 import React, { useState, useCallback } from 'react';
-import { useAgeGate } from '../../hooks/useAgeGate'; // Adjust path as needed
-import AgeGateModal from './AgeGateModal'; // Adjust path as needed
-import './BlurUntilAdult.css'; // Assuming you'll create this CSS file
+import { useAgeGate } from '../../hooks/useAgeGate';
+import AgeGateModal from './AgeGateModal';
+import './BlurUntilAdult.css';
 
 interface BlurUntilAdultProps {
   children: React.ReactNode;
-  safeRoutes?: string[]; // Optional array of routes where blur should not apply
 }
 
-const BlurUntilAdult: React.FC<BlurUntilAdultProps> = ({ children, safeRoutes = [] }) => {
-  const { accepted, accept, config } = useAgeGate();
+const BlurUntilAdult: React.FC<BlurUntilAdultProps> = ({ children }) => {
+  const { accepted, accept, config, shouldGate } = useAgeGate();
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const currentPath = window.location.pathname;
-  const isSafeRoute = safeRoutes.some(route => currentPath.startsWith(route));
 
   const handleOpenModal = useCallback(() => {
     setIsModalOpen(true);
@@ -28,7 +24,9 @@ const BlurUntilAdult: React.FC<BlurUntilAdultProps> = ({ children, safeRoutes = 
     window.location.href = 'https://www.google.com'; // Redirect to a safe page
   }, []);
 
-  if (accepted || isSafeRoute) {
+  // The blur and banner should only show if shouldGate is true for the current path
+  // The actual modal rendering is handled in App.tsx based on shouldGate
+  if (accepted) {
     return <>{children}</>;
   }
 
@@ -36,17 +34,20 @@ const BlurUntilAdult: React.FC<BlurUntilAdultProps> = ({ children, safeRoutes = 
     <div className="blur-container">
       <div className="blurred-content">{children}</div>
       <div className="age-gate-banner">
-        <p>Content is for 18+ only.</p>
+        <p>18+ Required. Click to verify</p>
         <button onClick={handleOpenModal} className="banner-button">
           Verify Age
         </button>
       </div>
-      <AgeGateModal
-        isOpen={isModalOpen}
-        onAccept={handleAcceptAge}
-        onLeave={handleLeave}
-        minAge={config.minAge}
-      />
+      {/* AgeGateModal is rendered by App.tsx as a portal, not here */}
+      {isModalOpen && (
+        <AgeGateModal
+          isOpen={isModalOpen}
+          onAccept={handleAcceptAge}
+          onLeave={handleLeave}
+          minAge={config.minAge}
+        />
+      )}
     </div>
   );
 };

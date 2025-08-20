@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { useWallet } from '../../contexts/WalletContext';
 import { WalletUtils } from '../../utils/walletUtils';
 import { NetworkSelector } from './NetworkSelector';
-import Button from '../Button';
-import Icon from '../Icon';
+import Button from '@/components/Button'; // Using alias
+import Icon from '@/components/Icon';     // Using alias
+import { flags } from '../../config/flags'; // Import feature flags
 
 interface WalletInfoProps {
   variant?: 'default' | 'card' | 'compact';
@@ -33,6 +34,10 @@ export const WalletInfo: React.FC<WalletInfoProps> = ({
 
   if (!isConnected || !account) {
     return null;
+  }
+
+  if (!flags.showWalletUI) {
+    return null; // Render nothing if feature flag is off
   }
 
   const handleCopyAddress = async () => {
@@ -69,7 +74,7 @@ export const WalletInfo: React.FC<WalletInfoProps> = ({
   // Compact variant - minimal display
   if (variant === 'compact') {
     return (
-      <div className={`flex items-center gap-2 ${className || ''}`}>
+      <div className={`wallet-ui flex items-center gap-2 ${className || ''}`}>
         <div className={`w-6 h-6 rounded-full bg-gradient-to-br ${getNetworkColor()} flex items-center justify-center text-xs`}>
           {getNetworkIcon()}
         </div>
@@ -90,7 +95,7 @@ export const WalletInfo: React.FC<WalletInfoProps> = ({
   // Card variant - full card display
   if (variant === 'card') {
     return (
-      <div className={`bg-secondary rounded-xl p-6 ${className || ''}`}>
+      <div className={`wallet-ui bg-secondary rounded-xl p-6 ${className || ''}`}>
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Wallet Info</h3>
@@ -187,10 +192,8 @@ export const WalletInfo: React.FC<WalletInfoProps> = ({
       </div>
     );
   }
-
-  // Default variant - standard display
   return (
-    <div className={`space-y-4 ${className || ''}`}>
+    <div className={`wallet-ui space-y-4 ${className || ''}`}>
       {/* Network and Wallet Info */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -235,7 +238,7 @@ export const WalletInfo: React.FC<WalletInfoProps> = ({
             </div>
           ) : (
             <p className="font-medium">
-              {balance 
+              {balance
                 ? `${WalletUtils.formatBalance(balance)} ${WalletUtils.getNetworkSymbol(chainId || 1)}`
                 : 'Unable to fetch balance'
               }

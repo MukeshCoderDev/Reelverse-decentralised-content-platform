@@ -1,10 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation, Link } from 'react-router-dom';
 import { PageHeader } from '../components/layout/PageHeader';
 import { VerticalFeed } from '../components/feeds/VerticalFeed';
 import { fetchFollowing } from '../lib/fetchers';
 import Button from '../components/Button';
 import Icon from '../components/Icon';
+import { useReturnTo } from '../src/hooks/useReturnTo';
 
 type FilterType = 'all' | 'recent' | 'popular';
 
@@ -12,6 +14,17 @@ const FollowingPage: React.FC = () => {
     const [filter, setFilter] = useState<FilterType>('all');
     // hide stories by default so header stays compact like TikTok
     const [showStories, setShowStories] = useState(false);
+
+    const location = useLocation();
+    const { saveScroll, restoreScroll } = useReturnTo();
+
+    useEffect(() => {
+        restoreScroll(location.pathname);
+        // No fetcher here, VerticalFeed handles its own fetching
+        return () => {
+            saveScroll(location.pathname, window.scrollY);
+        };
+    }, [location.pathname, saveScroll, restoreScroll]);
 
     // Mock creator stories (Instagram-style)
     const creatorStories = [

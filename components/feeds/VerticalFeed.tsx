@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
+import { useLocation, Link } from 'react-router-dom';
 import { EmptyState } from '../shared/EmptyState';
 import { Content } from '../../types';
 import Icon from '../Icon';
@@ -12,7 +13,7 @@ interface VerticalFeedProps {
 }
 
 const TikTokStyleCard: React.FC<{ content: Content; isActive?: boolean; compact?: boolean }> = ({ content, isActive = false, compact = false }) => {
-    const [showVideoPlayer, setShowVideoPlayer] = useState(false);
+    const location = useLocation();
 
     const formatNumber = (num?: number) => {
         if (!num) return '0';
@@ -22,23 +23,23 @@ const TikTokStyleCard: React.FC<{ content: Content; isActive?: boolean; compact?
     };
 
     return (
-        <div
-            className={`relative w-full ${compact ? 'h-screen max-h-none rounded-none' : 'h-screen max-h-[80vh] rounded-2xl'} bg-black overflow-hidden group`}
-            onClick={() => setShowVideoPlayer(true)}
+        <Link
+            to={`/watch/${content.id}`}
+            state={{ from: location.pathname, scrollY: window.scrollY }}
+            className={`relative w-full ${compact ? 'h-screen max-h-none rounded-none' : 'h-screen max-h-[80vh] rounded-2xl'} bg-black overflow-hidden group block`}
         >
             {/* Video/Image Content */}
             <div className="relative w-full h-full">
                 {content.thumbnail ? (
                     <div className="relative w-full h-full">
-                        <img 
-                            src={content.thumbnail} 
+                        <img
+                            src={content.thumbnail}
                             alt={content.title}
                             className="w-full h-full object-cover"
                         />
                         {/* Play button overlay */}
-                        <div 
+                        <div
                             className="absolute inset-0 flex items-center justify-center cursor-pointer"
-                            onClick={(e) => { e.stopPropagation(); setShowVideoPlayer(true); }}
                         >
                             <div className="w-16 h-16 bg-black/50 rounded-full flex items-center justify-center backdrop-blur-sm">
                                 <Icon name="play" size={24} className="text-white ml-1" />
@@ -54,37 +55,12 @@ const TikTokStyleCard: React.FC<{ content: Content; isActive?: boolean; compact?
                 {/* TikTok-style gradient overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
             </div>
-            {/* Open the YouTube-style player modal when requested */}
-            {showVideoPlayer && (
-                <YouTubeStyleVideoPlayer
-                    videoSrc={"https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4"}
-                    videoData={{
-                        id: content.id,
-                        title: content.title,
-                        creator: content.creator,
-                        creatorAvatar: '/placeholder.svg',
-                        subscribers: Math.floor(Math.random() * 100000) + 1000,
-                        views: parseInt((content.views || '0').replace(/[^\d]/g, '')) || Math.floor(Math.random() * 1000000),
-                        likes: content.likes || Math.floor(Math.random() * 50000),
-                        dislikes: 0,
-                        uploadDate: new Date(),
-                        description: content.title,
-                        tags: [] as string[],
-                        isSubscribed: false,
-                        isLiked: false,
-                        isDisliked: false,
-                        isSaved: false
-                    }}
-                    onClose={() => setShowVideoPlayer(false)}
-                    contentId={content.id}
-                />
-            )}
 
             {/* Content Info - Bottom Left */}
             <div className={`absolute bottom-0 left-0 ${compact ? 'right-0' : 'right-16'} p-4 text-white`}>
                 <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                        <img 
+                        <img
                             src={`https://picsum.photos/seed/${content.creator}/32/32`}
                             alt={content.creator}
                             className="w-8 h-8 rounded-full"
@@ -149,7 +125,7 @@ const TikTokStyleCard: React.FC<{ content: Content; isActive?: boolean; compact?
                     </p>
                 </div>
             )}
-        </div>
+        </Link>
     );
 };
 
@@ -188,8 +164,8 @@ export function VerticalFeed({ fetcher, compact = false }: VerticalFeedProps) {
     return (
         <div className={`${compact ? '' : 'space-y-4 p-4'}`}>
             {items.map((item, i) => (
-                <TikTokStyleCard 
-                    key={`${item.id}-${i}`} 
+                <TikTokStyleCard
+                    key={`${item.id}-${i}`}
                     content={item}
                     isActive={i === 0}
                     compact={compact}

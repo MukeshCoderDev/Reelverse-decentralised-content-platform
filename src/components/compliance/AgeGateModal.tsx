@@ -1,7 +1,6 @@
 import React, { useRef, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
-import { useAgeGate } from '../../hooks/useAgeGate'; // Adjust path as needed
-import './AgeGateModal.css'; // Assuming you'll create this CSS file
+import './AgeGateModal.css';
 
 interface AgeGateModalProps {
   isOpen: boolean;
@@ -13,11 +12,17 @@ interface AgeGateModalProps {
 const AgeGateModal: React.FC<AgeGateModalProps> = ({ isOpen, onAccept, onLeave, minAge }) => {
   const modalRef = useRef<HTMLDivElement>(null);
 
+  // Disable ESC key and outside clicks
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    // Disable ESC key to close until accepted
     if (event.key === 'Escape') {
       event.preventDefault();
       event.stopPropagation();
+    }
+  }, []);
+
+  const handleOverlayClick = useCallback((event: React.MouseEvent) => {
+    if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+      event.stopPropagation(); // Prevent clicks outside modal from doing anything
     }
   }, []);
 
@@ -40,7 +45,7 @@ const AgeGateModal: React.FC<AgeGateModalProps> = ({ isOpen, onAccept, onLeave, 
   if (!isOpen) return null;
 
   return ReactDOM.createPortal(
-    <div className="age-gate-overlay" role="dialog" aria-modal="true" aria-labelledby="age-gate-title">
+    <div className="age-gate-overlay" role="dialog" aria-modal="true" aria-labelledby="age-gate-title" onClick={handleOverlayClick}>
       <div className="age-gate-modal" ref={modalRef}>
         <h2 id="age-gate-title">Age Verification Required</h2>
         <p>

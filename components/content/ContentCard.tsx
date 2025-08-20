@@ -1,11 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
+import { useLocation, Link } from 'react-router-dom';
 import { Content } from '../../types';
 import { YouTubeStyleVideoPlayer } from './YouTubeStyleVideoPlayer';
 import Icon from '../Icon';
 import { useWallet } from '../../contexts/WalletContext';
 import { AgeVerificationService, AgeVerificationStatus } from '../../services/ageVerificationService';
 import { AgeVerificationModal } from '../AgeVerificationModal';
+import { useReturnTo } from '../../src/hooks/useReturnTo';
 
 interface ContentCardProps extends Content {
     isAdultContent?: boolean;
@@ -25,12 +27,13 @@ export const ContentCard: React.FC<ContentCardProps> = ({
     isAdultContent = false,
     ageRating = '18+'
 }) => {
-    const { account, isConnected } = useWallet();
-    const [showVideoPlayer, setShowVideoPlayer] = useState(false);
+    const { account, isConnected } = useWallet(); // Re-added useWallet hook
     const [showAgeGate, setShowAgeGate] = useState(false);
     const [ageVerificationStatus, setAgeVerificationStatus] = useState<AgeVerificationStatus | null>(null);
     const [isLoadingVerification, setIsLoadingVerification] = useState(false);
     const ageVerificationService = AgeVerificationService.getInstance();
+    const location = useLocation();
+    const { goToWatch } = useReturnTo();
     
     // Load age verification status when component mounts or account changes
     useEffect(() => {
@@ -68,54 +71,33 @@ export const ContentCard: React.FC<ContentCardProps> = ({
 
     const isAgeVerified = ageVerificationStatus?.status === 'verified';
     const shouldBlurContent = isAdultContent && (!isConnected || !isAgeVerified);
-    const canAccessContent = !isAdultContent || (isConnected && isAgeVerified);
-
-    const handlePlayVideo = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        console.log('Play video clicked for:', title);
-
-        // Check if age verification is required
-        if (isAdultContent && !canAccessContent) {
-            if (!isConnected) {
-                // Show wallet connection prompt
-                alert('Please connect your wallet to access adult content');
-                return;
-            }
-            
-            if (!isAgeVerified) {
-                // Show age verification modal
-                setShowAgeGate(true);
-                return;
-            }
-        }
-
-        setShowVideoPlayer(true);
-    };
 
     const handleAgeVerificationComplete = (status: AgeVerificationStatus) => {
         setAgeVerificationStatus(status);
         setShowAgeGate(false);
         
-        // If verification successful, automatically play the video
+        // If verification successful, navigate to the video
         if (status.status === 'verified') {
-            setShowVideoPlayer(true);
+            goToWatch(`content_${title.replace(/\s+/g, '_').toLowerCase()}`);
         }
     };
 
     return (
-        <div className="group cursor-pointer">
-            <div 
+        <Link
+            to={`/watch/content_${title.replace(/\s+/g, '_').toLowerCase()}`}
+            state={{ from: location.pathname, scrollY: window.scrollY }}
+            className="group cursor-pointer block" // Added 'block' to make the Link fill the div
+        >
+            <div
                 className="relative mb-2 overflow-hidden rounded-lg bg-muted aspect-video hover:ring-2 hover:ring-primary transition-all duration-200"
-                onClick={handlePlayVideo}
             >
-                <img 
-                    src={thumbnail || "/placeholder.svg"} 
-                    alt={title} 
+                <img
+                    src={thumbnail || "/placeholder.svg"}
+                    alt={title}
                     className={`h-full w-full object-cover transition duration-300 group-hover:scale-[1.05] ${
                         shouldBlurContent ? 'blur-lg' : ''
                     }`}
                 />
-
                 {/* Age restriction overlay */}
                 {shouldBlurContent && (
                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
@@ -125,14 +107,14 @@ export const ContentCard: React.FC<ContentCardProps> = ({
                             </div>
                             <h3 className="text-lg font-semibold mb-2">{ageRating} Content</h3>
                             <p className="text-sm mb-3">
-                                {!isConnected 
+                                {!isConnected
                                     ? 'Connect your wallet and verify your age to view this content'
                                     : 'Age verification required to view this content'
                                 }
                             </p>
                             <div className="flex flex-col gap-2">
                                 {!isConnected ? (
-                                    <button 
+                                    <button
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             // This would trigger wallet connection
@@ -143,7 +125,7 @@ export const ContentCard: React.FC<ContentCardProps> = ({
                                         Connect Wallet
                                     </button>
                                 ) : (
-                                    <button 
+                                    <button
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             setShowAgeGate(true);
@@ -173,37 +155,32 @@ export const ContentCard: React.FC<ContentCardProps> = ({
                 </div>
                 
                 {/* Play button - only show if content is accessible */}
-                {canAccessContent && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                        <button 
-                            onClick={handlePlayVideo}
-                            className="p-4 bg-black/50 rounded-full hover:bg-black/70 transition-all duration-200 hover:scale-110"
-                            title="Play video"
-                        >
-                            <Icon name="play" size={32} className="text-white ml-1" />
-                        </button>
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <div
+                        className="p-4 bg-black/50 rounded-full hover:bg-black/70 transition-all duration-200 hover:scale-110"
+                        title="Play video"
+                    >
+                        <Icon name="play" size={32} className="text-white ml-1" />
                     </div>
-                )}
+                </div>
 
                 {/* Hover overlay with TikTok-style engagement - only show if content is accessible */}
-                {canAccessContent && (
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-end p-4">
-                        <div className="flex items-center gap-4 text-white">
-                            {likes && (
-                                <div className="flex items-center gap-1">
-                                    <Icon name="heart" size={16} />
-                                    <span className="text-sm">{formatNumber(likes)}</span>
-                                </div>
-                            )}
-                            {comments && (
-                                <div className="flex items-center gap-1">
-                                    <Icon name="message-circle" size={16} />
-                                    <span className="text-sm">{formatNumber(comments)}</span>
-                                </div>
-                            )}
-                        </div>
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-end p-4">
+                    <div className="flex items-center gap-4 text-white">
+                        {likes && (
+                            <div className="flex items-center gap-1">
+                                <Icon name="heart" size={16} />
+                                <span className="text-sm">{formatNumber(likes)}</span>
+                            </div>
+                        )}
+                        {comments && (
+                            <div className="flex items-center gap-1">
+                                <Icon name="message-circle" size={16} />
+                                <span className="text-sm">{formatNumber(comments)}</span>
+                            </div>
+                        )}
                     </div>
-                )}
+                </div>
             </div>
             
             <div>
@@ -262,40 +239,6 @@ export const ContentCard: React.FC<ContentCardProps> = ({
                     required={false}
                 />
             )}
-
-            {/* YouTube-Style Video Player Modal */}
-            {showVideoPlayer && (
-                <YouTubeStyleVideoPlayer
-                    videoSrc="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4"
-                    videoData={{
-                        id: `content_${title.replace(/\s+/g, '_').toLowerCase()}`,
-                        title: title,
-                        creator: creator,
-                        creatorAvatar: '/placeholder.svg',
-                        subscribers: Math.floor(Math.random() * 1000000) + 100000,
-                        views: parseInt(views.replace(/[^\d]/g, '')) || Math.floor(Math.random() * 10000000),
-                        likes: likes || Math.floor(Math.random() * 50000) + 1000,
-                        dislikes: Math.floor(Math.random() * 1000) + 50,
-                        uploadDate: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
-                        description: `Amazing ${title.toLowerCase()} content! This video showcases incredible storytelling and animation quality.\n\nIn this video, we explore the fascinating world of digital content creation and the future of entertainment platforms.\n\n🎬 What you'll see:\n• Professional animation techniques\n• Cutting-edge visual effects\n• Compelling narrative structure\n• Industry-leading production values\n\n👍 Like this video if you enjoyed it!\n💬 Let us know your thoughts in the comments\n🔔 Subscribe for more amazing content\n\n#Animation #DigitalContent #Entertainment #Reelverse`,
-                        tags: ['animation', 'entertainment', 'digital', 'content'],
-                        isSubscribed: false,
-                        isLiked: false,
-                        isDisliked: false,
-                        isSaved: false
-                    }}
-                    // Pass access control props to video player
-                    isAdultContent={isAdultContent}
-                    ageRating={ageRating}
-                    requiresEntitlement={true} // Assume all content requires some form of entitlement check
-                    priceUSDC={isAdultContent ? 5000000 : 1000000} // $5 for adult content, $1 for regular
-                    priceFiat={isAdultContent ? 5.99 : 1.99}
-                    contentTitle={title}
-                    creatorName={creator}
-                    entitlementType="ppv"
-                    onClose={() => setShowVideoPlayer(false)}
-                />
-            )}
-        </div>
+        </Link>
     );
 };

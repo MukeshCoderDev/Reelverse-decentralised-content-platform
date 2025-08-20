@@ -1,6 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from '../App'; // Assuming App.tsx is in the root
+import { flags } from './config/flags';
+import './styles/walletKillSwitch.css';
 import './index.css'; // Assuming you have a global CSS file
 import { PrivyProvider } from '@privy-io/react-auth';
 
@@ -385,7 +387,6 @@ Features included:
 
 All 20 tasks completed successfully! 🎉
 `);
-
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <PrivyProvider
@@ -400,4 +401,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <App />
     </PrivyProvider>
   </React.StrictMode>,
+);
+
+// Set data attribute on mount
+document.documentElement.setAttribute('data-show-wallet-ui', flags.showWalletUI ? 'true' : 'false');
 );

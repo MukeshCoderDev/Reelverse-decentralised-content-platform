@@ -1,0 +1,10 @@
+:root[data-show-wallet-ui="false"] .wallet-ui { display: none !important; }
+/* Hide RainbowKit containers/buttons if present */
+:root[data-show-wallet-ui="false"] [data-rk] { display: none !important; }
+:root[data-show-wallet-ui="false"] .rainbowkit-connect-button { display: none !important; }
+:root[data-show-wallet-ui="false"] .rk-connect-button { display: none !important; }
+/* Optional: hide wagmi/viem common wrappers if used */
+:root[data-show-wallet-ui="false"] .wagmi-connect,
+:root[data-show-wallet-ui="false"] .wallet-connect,
+:root[data-show-wallet-ui="false"] .network-selector { display: none !important; }
+:root[data-show-wallet-ui="false"] .wallet-gate { display: none !important; }

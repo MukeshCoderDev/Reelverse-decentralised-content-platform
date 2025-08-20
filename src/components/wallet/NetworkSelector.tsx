@@ -3,8 +3,9 @@ import { useWallet } from '../../contexts/WalletContext';
 import { NetworkService } from '../../services/wallet/NetworkService';
 import { WalletUtils } from '../../utils/walletUtils';
 import { NETWORK_CONFIGS } from '../../constants/wallet';
-import Button from '../Button';
-import Icon from '../Icon';
+import Button from '@/components/Button'; // Using alias
+import Icon from '@/components/Icon';     // Using alias
+import { flags } from '../../config/flags'; // Import feature flags
 
 interface NetworkSelectorProps {
   variant?: 'default' | 'secondary' | 'outline' | 'ghost';
@@ -54,13 +55,17 @@ export const NetworkSelector: React.FC<NetworkSelectorProps> = ({
     setIsOpen(false);
   };
 
-  // Don't render if not connected
-  if (!isConnected) {
+  // Don't render if feature flag is off or not connected
+  if (!flags.showWalletUI) {
     return null;
   }
 
+  if (!isConnected) {
+    return null; // Or render a zero-width spacer if layout breaks
+  }
+
   return (
-    <div className="relative">
+    <div className="wallet-ui relative">
       <Button
         variant={variant}
         size={size}
@@ -68,7 +73,6 @@ export const NetworkSelector: React.FC<NetworkSelectorProps> = ({
         disabled={isSwitching}
         className={`${className || ''} min-w-0`}
       >
-        {/* Current network indicator */}
         {currentNetwork ? (
           <>
             <div className={`w-4 h-4 rounded-full bg-gradient-to-br ${currentNetwork.color} flex items-center justify-center mr-2 text-xs`}>
@@ -94,18 +98,14 @@ export const NetworkSelector: React.FC<NetworkSelectorProps> = ({
         )}
       </Button>
 
-      {/* Dropdown menu */}
       {isOpen && (
         <>
-          {/* Backdrop */}
-          <div 
-            className="fixed inset-0 z-10" 
+          <div
+            className="fixed inset-0 z-10"
             onClick={handleClose}
           />
           
-          {/* Dropdown content */}
           <div className="absolute right-0 top-full mt-2 w-64 bg-background border border-border rounded-lg shadow-lg z-20 max-h-80 overflow-y-auto">
-            {/* Header */}
             <div className="p-3 border-b border-border">
               <h3 className="text-sm font-medium">Select Network</h3>
               <p className="text-xs text-muted-foreground mt-1">
@@ -113,7 +113,6 @@ export const NetworkSelector: React.FC<NetworkSelectorProps> = ({
               </p>
             </div>
 
-            {/* Network list */}
             <div className="p-2">
               {supportedNetworks.map((network) => {
                 const isActive = network.chainId === chainId;
@@ -130,12 +129,10 @@ export const NetworkSelector: React.FC<NetworkSelectorProps> = ({
                         : 'hover:bg-secondary'
                     } ${isSwitching ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
-                    {/* Network icon */}
                     <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${network.color} flex items-center justify-center text-sm flex-shrink-0`}>
                       {network.iconUrl}
                     </div>
 
-                    {/* Network info */}
                     <div className="flex-1 text-left min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-sm">{network.name}</span>
@@ -160,7 +157,6 @@ export const NetworkSelector: React.FC<NetworkSelectorProps> = ({
                       </div>
                     </div>
 
-                    {/* Status indicator */}
                     <div className="flex-shrink-0">
                       {isActive ? (
                         <Icon name="check-circle" size={16} className="text-green-500" />
@@ -173,7 +169,6 @@ export const NetworkSelector: React.FC<NetworkSelectorProps> = ({
               })}
             </div>
 
-            {/* Footer info */}
             <div className="p-3 border-t border-border">
               <div className="flex items-start gap-2">
                 <Icon name="info" size={14} className="text-blue-500 mt-0.5 flex-shrink-0" />

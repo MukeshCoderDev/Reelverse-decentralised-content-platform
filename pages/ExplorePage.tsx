@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useLocation, Link } from 'react-router-dom';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Categories } from '../components/explore/Categories';
 import { ShelfRow } from '../components/content/ShelfRow';
@@ -8,6 +9,7 @@ import { fetchExplore } from '../lib/fetchers';
 import { Content } from '../types';
 import { RowSkeleton } from '../components/shared/Skeletons';
 import Icon from '../components/Icon';
+import { useReturnTo } from '../src/hooks/useReturnTo';
 
 interface ExploreData {
     categories: { id: string; name: string }[];
@@ -46,12 +48,19 @@ const ExplorePage: React.FC = () => {
         { tag: '#DeFiEducation', posts: '34.1K', trending: true },
     ];
 
+    const location = useLocation();
+    const { saveScroll, restoreScroll, goToWatch } = useReturnTo();
+
     useEffect(() => {
+        restoreScroll(location.pathname);
         fetchExplore()
             .then(setData)
             .finally(() => setLoading(false));
-    }, []);
 
+        return () => {
+            saveScroll(location.pathname, window.scrollY);
+        };
+    }, [location.pathname, saveScroll, restoreScroll]);
     const handleSearch = async (query: string, filters: SearchFilters) => {
         setIsSearching(true);
         setSearchQuery(query);

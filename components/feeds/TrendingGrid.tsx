@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { useLocation, Link } from 'react-router-dom';
 import { Content } from '../../types';
 import Icon from '../Icon';
 import { YouTubeStyleVideoPlayer } from '../content/YouTubeStyleVideoPlayer';
@@ -11,7 +12,7 @@ interface TrendingGridProps {
 
 const TrendingCard: React.FC<{ content: Content; index: number }> = ({ content, index }) => {
     const [isHovered, setIsHovered] = useState(false);
-    const [showVideoPlayer, setShowVideoPlayer] = useState(false);
+    const location = useLocation();
 
     const formatNumber = (num?: number) => {
         if (!num) return '0';
@@ -21,129 +22,103 @@ const TrendingCard: React.FC<{ content: Content; index: number }> = ({ content, 
     };
 
     return (
-        <div 
-            className="group cursor-pointer"
+        <Link
+            to={`/watch/${content.id}`}
+            state={{ from: location.pathname, scrollY: window.scrollY }}
+            className="group cursor-pointer block"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
-            onClick={() => setShowVideoPlayer(true)}
         >
             <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-muted">
-                <img 
-                    src={content.thumbnail || "/placeholder.svg"} 
-                    alt={content.title}
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                />
-                
-                {/* TikTok-style gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                
-                {/* Trending rank badge */}
-                {index < 3 && (
-                    <div className="absolute top-3 left-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
-                            index === 0 ? 'bg-yellow-500' : 
-                            index === 1 ? 'bg-gray-400' : 
-                            'bg-orange-600'
-                        }`}>
-                            {index + 1}
-                        </div>
-                    </div>
-                )}
-
-                {/* Trending indicator */}
-                {content.trending && (
-                    <div className="absolute top-3 right-3 flex items-center gap-1 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-medium">
-                        <Icon name="flame" size={12} />
-                        <span>HOT</span>
-                    </div>
-                )}
-
-                {/* Play button overlay */}
-                <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${
-                    isHovered ? 'opacity-100' : 'opacity-0'
-                }`}>
-                    <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-                        <Icon name="play" size={24} className="text-white ml-1" />
-                    </div>
-                </div>
-
-                {/* Content info */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
-                    <div className="space-y-2">
-                        <h3 className="font-semibold text-sm line-clamp-2 leading-tight">
-                            {content.title}
-                        </h3>
-                        
-                        <div className="flex items-center gap-2 text-xs">
-                            <img 
-                                src={`https://picsum.photos/seed/${content.creator}/24/24`}
-                                alt={content.creator}
-                                className="w-5 h-5 rounded-full"
-                            />
-                            <span className="font-medium">{content.creator}</span>
-                        </div>
-                        
-                        <div className="flex items-center justify-between text-xs text-white/80">
-                            <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-1">
-                                    <Icon name="eye" size={12} />
-                                    <span>{content.views}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    <Icon name="heart" size={12} />
-                                    <span>{formatNumber(content.likes)}</span>
-                                </div>
+                    <img
+                        src={content.thumbnail || "/placeholder.svg"}
+                        alt={content.title}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                    />
+                    
+                    {/* TikTok-style gradient overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                    
+                    {/* Trending rank badge */}
+                    {index < 3 && (
+                        <div className="absolute top-3 left-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                                index === 0 ? 'bg-yellow-500' :
+                                index === 1 ? 'bg-gray-400' :
+                                'bg-orange-600'
+                            }`}>
+                                {index + 1}
                             </div>
-                            <span>{content.ago}</span>
+                        </div>
+                    )}
+    
+                    {/* Trending indicator */}
+                    {content.trending && (
+                        <div className="absolute top-3 right-3 flex items-center gap-1 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                            <Icon name="flame" size={12} />
+                            <span>HOT</span>
+                        </div>
+                    )}
+    
+                    {/* Play button overlay */}
+                    <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${
+                        isHovered ? 'opacity-100' : 'opacity-0'
+                    }`}>
+                        <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                            <Icon name="play" size={24} className="text-white ml-1" />
                         </div>
                     </div>
+    
+                    {/* Content info */}
+                    <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
+                        <div className="space-y-2">
+                            <h3 className="font-semibold text-sm line-clamp-2 leading-tight">
+                                {content.title}
+                            </h3>
+                            
+                            <div className="flex items-center gap-2 text-xs">
+                                <img
+                                    src={`https://picsum.photos/seed/${content.creator}/24/24`}
+                                    alt={content.creator}
+                                    className="w-5 h-5 rounded-full"
+                                />
+                                <span className="font-medium">{content.creator}</span>
+                            </div>
+                            
+                            <div className="flex items-center justify-between text-xs text-white/80">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-1">
+                                        <Icon name="eye" size={12} />
+                                        <span>{content.views}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <Icon name="heart" size={12} />
+                                        <span>{formatNumber(content.likes)}</span>
+                                    </div>
+                                </div>
+                                <span>{content.ago}</span>
+                            </div>
+                        </div>
+                    </div>
+    
+                    {/* Hover actions */}
+                    <div className={`absolute top-1/2 right-4 -translate-y-1/2 flex flex-col gap-3 transition-all duration-200 ${
+                        isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'
+                    }`}>
+                        <button className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm hover:bg-white/30 transition-colors">
+                            <Icon name="heart" size={16} className="text-white" />
+                        </button>
+                        <button className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm hover:bg-white/30 transition-colors">
+                            <Icon name="share" size={16} className="text-white" />
+                        </button>
+                        <button className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm hover:bg-white/30 transition-colors">
+                            <Icon name="star" size={16} className="text-white" />
+                        </button>
+                    </div>
                 </div>
-
-                {/* Hover actions */}
-                <div className={`absolute top-1/2 right-4 -translate-y-1/2 flex flex-col gap-3 transition-all duration-200 ${
-                    isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'
-                }`}>
-                    <button className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm hover:bg-white/30 transition-colors">
-                        <Icon name="heart" size={16} className="text-white" />
-                    </button>
-                    <button className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm hover:bg-white/30 transition-colors">
-                        <Icon name="share" size={16} className="text-white" />
-                    </button>
-                    <button className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm hover:bg-white/30 transition-colors">
-                        <Icon name="star" size={16} className="text-white" />
-                    </button>
-                </div>
-            </div>
-            {showVideoPlayer && (
-                <YouTubeStyleVideoPlayer
-                    videoSrc={content.src || ''}
-                    videoData={{
-                        id: content.id,
-                        title: content.title,
-                        creator: content.creator,
-                        creatorAvatar: content.creatorAvatar || '/placeholder.svg',
-                        subscribers: content.subscribers || 0,
-                        views: content.views || 0,
-                        likes: content.likes || 0,
-                        dislikes: 0,
-                        uploadDate: content.uploadDate ? new Date(content.uploadDate) : new Date(),
-                        description: content.description || '',
-                        tags: content.tags || [],
-                        isSubscribed: false,
-                        isLiked: !!content.isLiked,
-                        isDisliked: false,
-                        isSaved: false
-                    }}
-                    onClose={() => setShowVideoPlayer(false)}
-                    contentId={content.id}
-                    isAdultContent={!!content.isAdult}
-                    requiresEntitlement={!!content.requiresEntitlement}
-                />
-            )}
-        </div>
-    );
-};
-
+            </Link>
+        );
+    };
 export function TrendingGrid({ items, category }: TrendingGridProps) {
     // Sort items by engagement for trending
     const sortedItems = [...items].sort((a, b) => {

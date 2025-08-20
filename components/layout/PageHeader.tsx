@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { benchmarks } from '../../lib/benchmarks';
 import Icon from '../Icon';
 import { WalletButton } from '../wallet/WalletButton';
+import { flags } from "../../src/config/flags";
 
 export function PageHeader({ id, title, actions }: { id: keyof typeof benchmarks; title: string; actions?: React.ReactNode }) {
     const [tooltipVisible, setTooltipVisible] = useState(false);
@@ -26,7 +27,8 @@ export function PageHeader({ id, title, actions }: { id: keyof typeof benchmarks
                 </div>
             </div>
             <div className="flex items-center gap-2">
-                <WalletButton />
+                {flags.showWalletUI && <div className="wallet-ui"><WalletButton /></div>}
+                {!flags.showWalletUI && <div style={{width: 0, height: 0}} aria-hidden />}
                 {actions}
             </div>
         </div>

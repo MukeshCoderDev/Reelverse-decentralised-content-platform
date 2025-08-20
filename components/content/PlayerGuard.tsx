@@ -6,6 +6,7 @@ import { AgeVerificationModal } from '../AgeVerificationModal';
 import { CheckoutModal } from '../payment/CheckoutModal';
 import { PaymentResult } from '../../services/paymentService';
 import Icon from '../Icon';
+import { flags } from '../../src/config/flags';
 
 interface PlayerGuardProps {
   contentId: string;
@@ -189,9 +190,13 @@ export const PlayerGuard: React.FC<PlayerGuardProps> = ({
   }
 
   // Wallet connection required
-  if (!isConnected) {
+  // Wallet connection required
+  const hasPlaybackTicket = accessStatus?.hasEntitlement; // Assuming hasEntitlement acts as a playback ticket
+  const canPlay = hasPlaybackTicket || !(flags.showWalletUI && flags.requireWalletForPlayback);
+
+  if (!canPlay && !isConnected && flags.showWalletUI && flags.requireWalletForPlayback) {
     return (
-      <div className="relative">
+      <div className="relative wallet-ui wallet-gate">
         {children}
         <AccessBlockedOverlay
           reason="wallet_not_connected"
@@ -213,7 +218,6 @@ export const PlayerGuard: React.FC<PlayerGuardProps> = ({
       </div>
     );
   }
-
   // SIWE authentication required for premium features
   if (!isAuthenticated) {
     return (

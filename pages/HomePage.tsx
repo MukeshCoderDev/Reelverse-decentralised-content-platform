@@ -1,11 +1,13 @@
 
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect } from 'react';
+import { useLocation, Link } from 'react-router-dom';
 import { PageHeader } from '../components/layout/PageHeader';
 import { ShelfRow } from '../components/content/ShelfRow';
 import { fetchHome } from '../lib/fetchers';
 import { RowSkeleton } from '../components/shared/Skeletons';
 import { Content } from '../types';
 import Icon from '../components/Icon';
+import { useReturnTo } from '../src/hooks/useReturnTo';
 
 interface HomeContentProps {
   items: Content[];
@@ -50,11 +52,19 @@ const HomePage: React.FC = () => {
   const [items, setItems] = React.useState<Content[] | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
 
-  React.useEffect(() => {
+  const location = useLocation();
+  const { saveScroll, restoreScroll } = useReturnTo();
+
+  useEffect(() => {
+    restoreScroll(location.pathname);
     fetchHome()
       .then(setItems)
       .finally(() => setIsLoading(false));
-  }, []);
+
+    return () => {
+      saveScroll(location.pathname, window.scrollY);
+    };
+  }, [location.pathname, saveScroll, restoreScroll]);
 
   return (
     <div className="min-h-screen bg-background">
