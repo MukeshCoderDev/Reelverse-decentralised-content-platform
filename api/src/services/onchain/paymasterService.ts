@@ -1,3 +1,4 @@
+import { logger } from '../../utils/logger';
 import { ethers } from 'ethers';
 import { UserOperationStruct } from '@account-abstraction/contracts';
 import { env } from '../../config/env';
@@ -54,27 +55,27 @@ export class PaymasterService {
   /**
    * Sponsor a user operation by providing paymaster data
    */
-  async sponsorUserOperation(userOp: Partial<UserOperation>): Promise<PaymasterResult> {
+  async sponsorUserOperation(userOp: Partial<UserOperation> & { requestId?: string }): Promise<PaymasterResult> {
     try {
-      console.log(`Sponsoring user operation for sender: ${userOp.sender}`);
+      logger.info(`Sponsoring user operation for sender: ${userOp.sender}`, { requestId: userOp.requestId });
 
       // Validate spending limits
-      await this.validateSpendingLimits(userOp.sender!);
+      await this.validateSpendingLimits(userOp.sender!, userOp.requestId);
 
       // Estimate gas costs
-      const gasEstimate = await this.estimateGasCosts(userOp);
+      const gasEstimate = await this.estimateGasCosts(userOp, userOp.requestId);
 
       // Check if we can afford to sponsor this operation
-      const canSponsor = await this.canSponsorOperation(gasEstimate.totalCost);
+      const canSponsor = await this.canSponsorOperation(gasEstimate.totalCost, userOp.requestId);
       if (!canSponsor) {
         throw new Error('Paymaster cannot sponsor operation: insufficient funds or limits exceeded');
       }
 
       // Generate paymaster data
-      const paymasterAndData = await this.generatePaymasterData(userOp, gasEstimate);
+      const paymasterAndData = await this.generatePaymasterData(userOp, gasEstimate, userOp.requestId);
 
       // Update spending tracking
-      await this.updateSpendingLimits(userOp.sender!, gasEstimate.totalCost);
+      await this.updateSpendingLimits(userOp.sender!, gasEstimate.totalCost, userOp.requestId);
 
       const result: PaymasterResult = {
         paymasterAndData,
@@ -85,11 +86,11 @@ export class PaymasterService {
         maxPriorityFeePerGas: gasEstimate.maxPriorityFeePerGas
       };
 
-      console.log(`User operation sponsored successfully for ${userOp.sender}`);
+      logger.info(`User operation sponsored successfully for ${userOp.sender}`, { requestId: userOp.requestId });
       return result;
 
-    } catch (error) {
-      console.error(`Failed to sponsor user operation:`, error);
+    } catch (error: any) {
+      logger.error(`Failed to sponsor user operation for ${userOp.sender}: ${error.message}`, { requestId: userOp.requestId, error });
       throw error;
     }
   }
@@ -97,7 +98,7 @@ export class PaymasterService {
   /**
    * Estimate gas costs for a user operation
    */
-  private async estimateGasCosts(userOp: Partial<UserOperation>): Promise<any> {
+  private async estimateGasCosts(userOp: Partial<UserOperation>, requestId?: string): Promise<any> {
     try {
       // Get current gas prices
       const feeData = await this.provider.getFeeData();
@@ -121,8 +122,8 @@ export class PaymasterService {
 
       return gasEstimate;
 
-    } catch (error) {
-      console.error('Gas estimation failed:', error);
+    } catch (error: any) {
+      logger.error(`Gas estimation failed: ${error.message}`, { requestId, error });
       throw new Error('Failed to estimate gas costs');
     }
   }
@@ -132,7 +133,8 @@ export class PaymasterService {
    */
   private async generatePaymasterData(
     userOp: Partial<UserOperation>, 
-    gasEstimate: any
+    gasEstimate: any,
+    requestId?: string
   ): Promise<string> {
     try {
       // Create paymaster data structure
@@ -149,12 +151,12 @@ export class PaymasterService {
       ).slice(2);
 
       // Generate signature for paymaster validation
-      const paymasterData = await this.signPaymasterData(userOp, gasEstimate);
+      const paymasterData = await this.signPaymasterData(userOp, gasEstimate, requestId);
 
       return '0x' + paymasterAddress + verificationGasLimit + postOpGasLimit + paymasterData.slice(2);
 
-    } catch (error) {
-      console.error('Failed to generate paymaster data:', error);
+    } catch (error: any) {
+      logger.error(`Failed to generate paymaster data: ${error.message}`, { requestId, error });
       throw error;
     }
   }
@@ -162,7 +164,7 @@ export class PaymasterService {
   /**
    * Sign paymaster data for validation
    */
-  private async signPaymasterData(userOp: Partial<UserOperation>, gasEstimate: any): Promise<string> {
+  private async signPaymasterData(userOp: Partial<UserOperation>, gasEstimate: any, requestId?: string): Promise<string> {
     try {
       // Create hash of the user operation for signing
       const userOpHash = ethers.keccak256(
@@ -187,8 +189,8 @@ export class PaymasterService {
       
       return signature;
 
-    } catch (error) {
-      console.error('Failed to sign paymaster data:', error);
+    } catch (error: any) {
+      logger.error(`Failed to sign paymaster data: ${error.message}`, { requestId, error });
       throw error;
     }
   }
@@ -196,28 +198,28 @@ export class PaymasterService {
   /**
    * Check if paymaster can sponsor the operation
    */
-  private async canSponsorOperation(gasCost: string): Promise<boolean> {
+  private async canSponsorOperation(gasCost: string, requestId?: string): Promise<boolean> {
     try {
       // Check paymaster balance
       const balance = await this.provider.getBalance(env.PAYMASTER_ADDRESS);
       const requiredBalance = BigInt(gasCost) * BigInt(2); // 2x buffer
       
       if (balance < requiredBalance) {
-        console.warn(`Insufficient paymaster balance: ${balance} < ${requiredBalance}`);
+        logger.warn(`Insufficient paymaster balance: ${balance} < ${requiredBalance}`, { requestId, balance: balance.toString(), requiredBalance: requiredBalance.toString() });
         return false;
       }
 
       // Check if gas cost exceeds per-operation limit
       const maxGasPerOp = BigInt(env.MAX_GAS_PER_USER_OP);
       if (BigInt(gasCost) > maxGasPerOp) {
-        console.warn(`Gas cost exceeds per-operation limit: ${gasCost} > ${maxGasPerOp}`);
+        logger.warn(`Gas cost exceeds per-operation limit: ${gasCost} > ${maxGasPerOp}`, { requestId, gasCost, maxGasPerOp: maxGasPerOp.toString() });
         return false;
       }
 
       return true;
 
-    } catch (error) {
-      console.error('Error checking sponsorship capability:', error);
+    } catch (error: any) {
+      logger.error(`Error checking sponsorship capability: ${error.message}`, { requestId, error });
       return false;
     }
   }
@@ -225,9 +227,9 @@ export class PaymasterService {
   /**
    * Validate spending limits for a user
    */
-  private async validateSpendingLimits(sender: string): Promise<void> {
+  private async validateSpendingLimits(sender: string, requestId?: string): Promise<void> {
     try {
-      const limits = await this.getSpendingLimits(sender);
+      const limits = await this.getSpendingLimits(sender, requestId);
       
       // Check daily limit
       if (BigInt(limits.dailySpent) >= BigInt(limits.dailyLimit)) {
@@ -239,8 +241,8 @@ export class PaymasterService {
         throw new Error(`Monthly spending limit exceeded for ${sender}`);
       }
 
-    } catch (error) {
-      console.error('Spending limit validation failed:', error);
+    } catch (error: any) {
+      logger.error(`Spending limit validation failed for ${sender}: ${error.message}`, { requestId, sender, error });
       throw error;
     }
   }
@@ -248,7 +250,7 @@ export class PaymasterService {
   /**
    * Get spending limits for a user
    */
-  async getSpendingLimits(sender: string): Promise<SpendingLimits> {
+  async getSpendingLimits(sender: string, requestId?: string): Promise<SpendingLimits> {
     try {
       // This would typically be stored in a database
       // For now, return default limits
@@ -264,8 +266,8 @@ export class PaymasterService {
         lastResetDate: startOfDay
       };
 
-    } catch (error) {
-      console.error('Error getting spending limits:', error);
+    } catch (error: any) {
+      logger.error(`Error getting spending limits for ${sender}: ${error.message}`, { requestId, sender, error });
       throw error;
     }
   }
@@ -273,18 +275,18 @@ export class PaymasterService {
   /**
    * Update spending limits after sponsoring an operation
    */
-  private async updateSpendingLimits(sender: string, gasCost: string): Promise<void> {
+  private async updateSpendingLimits(sender: string, gasCost: string, requestId?: string): Promise<void> {
     try {
       // This would update the database with new spending amounts
-      console.log(`Updated spending for ${sender}: +${gasCost} wei`);
+      logger.info(`Updated spending for ${sender}: +${gasCost} wei`, { requestId, sender, gasCost });
       
       // In a real implementation, this would:
       // 1. Get current spending from database
       // 2. Add the new gas cost
       // 3. Update the database
       // 4. Reset daily/monthly counters if needed
-    } catch (error) {
-      console.error('Error updating spending limits:', error);
+    } catch (error: any) {
+      logger.error(`Error updating spending limits for ${sender}: ${error.message}`, { requestId, sender, error });
       // Don't throw - this shouldn't break the sponsorship
     }
   }
@@ -292,9 +294,9 @@ export class PaymasterService {
   /**
    * Fund the paymaster with ETH
    */
-  async fundPaymaster(amountEth: string): Promise<string> {
+  async fundPaymaster(amountEth: string, requestId?: string): Promise<string> {
     try {
-      console.log(`Funding paymaster with ${amountEth} ETH`);
+      logger.info(`Funding paymaster with ${amountEth} ETH`, { requestId });
 
       const tx = await this.wallet.sendTransaction({
         to: env.PAYMASTER_ADDRESS,
@@ -302,12 +304,12 @@ export class PaymasterService {
       });
 
       await tx.wait();
-      console.log(`Paymaster funded successfully: ${tx.hash}`);
+      logger.info(`Paymaster funded successfully: ${tx.hash}`, { requestId, txHash: tx.hash });
       
       return tx.hash;
 
-    } catch (error) {
-      console.error('Failed to fund paymaster:', error);
+    } catch (error: any) {
+      logger.error(`Failed to fund paymaster with ${amountEth} ETH: ${error.message}`, { requestId, error });
       throw error;
     }
   }
@@ -315,9 +317,9 @@ export class PaymasterService {
   /**
    * Withdraw funds from paymaster (admin only)
    */
-  async withdrawFromPaymaster(amountEth: string, recipient: string): Promise<string> {
+  async withdrawFromPaymaster(amountEth: string, recipient: string, requestId?: string): Promise<string> {
     try {
-      console.log(`Withdrawing ${amountEth} ETH from paymaster to ${recipient}`);
+      logger.info(`Withdrawing ${amountEth} ETH from paymaster to ${recipient}`, { requestId });
 
       // Call withdraw function on paymaster contract
       const tx = await this.paymasterContract.withdraw(
@@ -326,12 +328,12 @@ export class PaymasterService {
       );
 
       await tx.wait();
-      console.log(`Withdrawal successful: ${tx.hash}`);
+      logger.info(`Withdrawal successful: ${tx.hash}`, { requestId, txHash: tx.hash });
       
       return tx.hash;
 
-    } catch (error) {
-      console.error('Failed to withdraw from paymaster:', error);
+    } catch (error: any) {
+      logger.error(`Failed to withdraw ${amountEth} ETH from paymaster to ${recipient}: ${error.message}`, { requestId, error });
       throw error;
     }
   }
@@ -339,7 +341,7 @@ export class PaymasterService {
   /**
    * Get paymaster balance and statistics
    */
-  async getPaymasterStats(): Promise<any> {
+  async getPaymasterStats(requestId?: string): Promise<any> {
     try {
       const balance = await this.provider.getBalance(env.PAYMASTER_ADDRESS);
       const balanceEth = ethers.formatEther(balance);
@@ -359,8 +361,8 @@ export class PaymasterService {
 
       return stats;
 
-    } catch (error) {
-      console.error('Error getting paymaster stats:', error);
+    } catch (error: any) {
+      logger.error(`Error getting paymaster stats: ${error.message}`, { requestId, error });
       throw error;
     }
   }
@@ -368,8 +370,8 @@ export class PaymasterService {
   /**
    * Batch process multiple user operations
    */
-  async batchSponsorOperations(userOps: Partial<UserOperation>[]): Promise<PaymasterResult[]> {
-    console.log(`Batch sponsoring ${userOps.length} user operations`);
+  async batchSponsorOperations(userOps: (Partial<UserOperation> & { requestId?: string })[]): Promise<PaymasterResult[]> {
+    logger.info(`Batch sponsoring ${userOps.length} user operations`);
 
     const results: PaymasterResult[] = [];
     
@@ -377,20 +379,20 @@ export class PaymasterService {
       try {
         const result = await this.sponsorUserOperation(userOp);
         results.push(result);
-      } catch (error) {
-        console.error(`Failed to sponsor operation for ${userOp.sender}:`, error);
+      } catch (error: any) {
+        logger.error(`Failed to sponsor operation for ${userOp.sender}: ${error.message}`, { requestId: userOp.requestId, sender: userOp.sender, error });
         // Continue with other operations
       }
     }
 
-    console.log(`Batch sponsoring completed: ${results.length}/${userOps.length} successful`);
+    logger.info(`Batch sponsoring completed: ${results.length}/${userOps.length} successful`);
     return results;
   }
 
   /**
    * Validate paymaster configuration
    */
-  async validateConfiguration(): Promise<boolean> {
+  async validateConfiguration(requestId?: string): Promise<boolean> {
     try {
       // Check if paymaster contract exists
       const code = await this.provider.getCode(env.PAYMASTER_ADDRESS);
@@ -403,7 +405,7 @@ export class PaymasterService {
       const minBalance = ethers.parseEther('0.1'); // Minimum 0.1 ETH
       
       if (balance < minBalance) {
-        console.warn(`Paymaster balance is low: ${ethers.formatEther(balance)} ETH`);
+        logger.warn(`Paymaster balance is low: ${ethers.formatEther(balance)} ETH`, { requestId, balance: ethers.formatEther(balance) });
       }
 
       // Validate spending limits
@@ -411,11 +413,11 @@ export class PaymasterService {
         throw new Error('Invalid spending limits configuration');
       }
 
-      console.log('Paymaster configuration validated successfully');
+      logger.info('Paymaster configuration validated successfully', { requestId });
       return true;
 
-    } catch (error) {
-      console.error('Paymaster configuration validation failed:', error);
+    } catch (error: any) {
+      logger.error(`Paymaster configuration validation failed: ${error.message}`, { requestId, error });
       return false;
     }
   }

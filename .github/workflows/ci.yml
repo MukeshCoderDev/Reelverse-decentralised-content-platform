@@ -7,6 +7,9 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch: # Allows manual triggering
+  schedule:
+    - cron: '0 */2 * * *' # Run every 2 hours for canary
 
 jobs:
   api:
@@ -61,6 +64,18 @@ jobs:
       - name: Run API tests
         run: npm run test:api
         working-directory: ./api
+      - name: Upload API Test Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-test-reports
+          path: api/test-results.xml # Assuming Jest/Vitest output to this file
+      - name: Upload OpenAPI Spec
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: openapi-spec
+          path: docs/api/openapi.yaml
 
   contracts:
     runs-on: ubuntu-latest
@@ -101,10 +116,42 @@ jobs:
       - name: Build Frontend
         run: npm run build
 
+  canary:
+    runs-on: ubuntu-latest
+    needs: api # Depends on API build for dependencies
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    env:
+      DEV_OWNER_PRIVATE_KEY: ${{ secrets.DEV_OWNER_PRIVATE_KEY }}
+      BUNDLER_URL: ${{ secrets.BUNDLER_URL }}
+      ENTRY_POINT_ADDRESS: ${{ secrets.ENTRY_POINT_ADDRESS }}
+      RPC_URL: ${{ secrets.RPC_URL }}
+      PAYMASTER_URL: ${{ secrets.PAYMASTER_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: api/package-lock.json
+      - name: Install API dependencies
+        run: npm ci
+        working-directory: ./api
+      - name: Run AA Canary Health Check
+        run: npm run canary:aa
+        working-directory: ./api
+        continue-on-error: false # Fail the job if canary fails
+    # Required GitHub Secrets for Canary tests:
+    # DEV_OWNER_PRIVATE_KEY: Private key of the dev owner account for canary (non-prod)
+    # BUNDLER_URL: URL of the bundler service (e.g., Biconomy, Alchemy)
+    # ENTRY_POINT_ADDRESS: Address of the EntryPoint contract
+    # RPC_URL: RPC URL for the Sepolia network
+    # PAYMASTER_URL: URL of the paymaster service (if needed for sponsored ops)
+
   e2e:
     runs-on: ubuntu-latest
     needs: [api, contracts, frontend] # Ensure API, Contracts, and Frontend are built and tested
-    if: github.ref == 'refs/heads/main' && secrets.BUNDLER_URL != '' && secrets.ENTRY_POINT_ADDRESS != '' && secrets.DEV_OWNER_PRIVATE_KEY != ''
+    if: github.ref == 'refs/heads/main' && github.event.inputs.BUNDLER_URL != '' && github.event.inputs.ENTRY_POINT_ADDRESS != '' && github.event.inputs.DEV_OWNER_PRIVATE_KEY != '' # Corrected secrets access in if
     env:
       E2E_SEPOLIA: 1
       BUNDLER_URL: ${{ secrets.BUNDLER_URL }}

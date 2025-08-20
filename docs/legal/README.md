@@ -1,39 +1,32 @@
-# Legal Documentation - Reelverse
+# Legal Documentation - Reelverse Platform
 
-This directory contains legal-related documentation for the Reelverse platform.
+This directory contains documentation related to legal compliance and content moderation.
 
-## 1. DMCA Takedown Policy
+## DMCA (Digital Millennium Copyright Act)
 
-### DMCA Agent Contact
-For Digital Millennium Copyright Act (DMCA) takedown requests, please contact our designated agent at:
+Reelverse is committed to respecting intellectual property rights. This section outlines our DMCA policy and procedures.
 
-**Email:** `dmca-agent@reelverse.com` (Placeholder - **Replace with actual email**)
+*   **DMCA Agent Email**: `dmca@reelverse.com` (Placeholder - **Replace with actual email**)
+    *   All DMCA takedown notices should be sent to this email address.
 
-### Information Required for DMCA Notice
-To process your DMCA takedown request efficiently, please include the following information in your notice:
+*   **2257 Custodian Information Format**:
+    *   For content subject to 18 U.S.C. § 2257, Reelverse requires and maintains records of compliance.
+    *   Information required from content creators includes:
+        *   Full legal name of all performers.
+        *   Date of birth of all performers.
+        *   Government-issued identification for all performers.
+        *   Date and location where the content was created.
+        *   Statement affirming all performers were 18 years or older at the time of content creation.
+        *   Consent forms from all performers.
+    *   This information is securely stored and made available to law enforcement upon valid request.
 
-1.  **Identification of the copyrighted work** claimed to have been infringed, or, if multiple copyrighted works are covered by a single notification, a representative list of such works.
-2.  **Identification of the material** that is claimed to be infringing or to be the subject of infringing activity and that is to be removed or access to which is to be disabled, and information reasonably sufficient to permit Reelverse to locate the material. Providing URLs is highly recommended.
-3.  **Information reasonably sufficient to permit Reelverse to contact the complaining party**, such as an address, telephone number, and, if available, an electronic mail address at which the complaining party may be contacted.
-4.  A statement that the complaining party has a **good faith belief** that use of the material in the manner complained of is not authorized by the copyright owner, its agent, or the law.
-5.  A statement that the information in the notification is **accurate**, and under penalty of perjury, that the complaining party is **authorized to act on behalf of the owner** of an exclusive right that is allegedly infringed.
-6.  A **physical or electronic signature** of the complaining party.
+*   **SLA (Service Level Agreement) for DMCA Notices**:
+    *   **Acknowledgement**: All valid DMCA takedown notices will be acknowledged within **24 hours** of receipt.
+    *   **Processing**: We aim to process and take appropriate action on valid notices within 48-72 hours, depending on complexity and volume.
+    *   **Appeals**: Content creators have the right to appeal takedown decisions. Details on the appeal process will be provided upon request.
 
-### Service Level Agreement (SLA) for DMCA Notices
--   **Acknowledgement:** We aim to acknowledge receipt of DMCA takedown notices within **24 hours** of receiving them.
--   **Processing:** We will process valid takedown requests promptly in accordance with applicable law.
+## Other Legal Information
 
-## 2. 2257 Custodian Information
-
-In compliance with 18 U.S.C. § 2257, Reelverse maintains records of information pertaining to the identification of performers and content producers.
-
-### Format of Records
-The records maintained include, but are not limited to:
--   Legal name of the performer/producer.
--   Date of birth of the performer/producer.
--   Address of the performer/producer.
--   Date and location of the production of the content.
--   Verification of age of all performers at the time of content creation.
--   Consent forms from all performers.
-
-These records are stored securely and are accessible only to authorized personnel for compliance purposes.
+*   **Terms of Service**: [Link to Terms of Service]
+*   **Privacy Policy**: [Link to Privacy Policy]
+*   **Community Guidelines**: [Link to Community Guidelines]

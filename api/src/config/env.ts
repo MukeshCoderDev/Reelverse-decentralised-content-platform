@@ -81,6 +81,7 @@ interface EnvConfig {
   CONTENT_ACCESS_GATE_ADDRESS: string;
   UPLOAD_MANAGER_ADDRESS: string;
   SESSION_KEY_POLICY_JSON?: string;
+  WALLETLESS_PROVIDER?: 'biconomy' | 'alchemy'; // Add WALLETLESS_PROVIDER
 }
 
 const getEnv = (): EnvConfig => {
@@ -108,6 +109,9 @@ const getEnv = (): EnvConfig => {
     'RATE_LIMIT_UPLOAD_START', 'RATE_LIMIT_AA_SESSION', 'RATE_LIMIT_BILLING',
     'CONTENT_ACCESS_GATE_ADDRESS', 'UPLOAD_MANAGER_ADDRESS'
   ];
+
+  // Add WALLETLESS_PROVIDER to requiredEnv if needed, or handle as optional
+  // For now, it's optional as per the task description
 
   for (const key of requiredEnv) {
     if (!env[key]) {
@@ -212,6 +216,7 @@ const getEnv = (): EnvConfig => {
     CONTENT_ACCESS_GATE_ADDRESS: env.CONTENT_ACCESS_GATE_ADDRESS || '0x0000000000000000000000000000000000000008', // Placeholder
     UPLOAD_MANAGER_ADDRESS: env.UPLOAD_MANAGER_ADDRESS || '0x0000000000000000000000000000000000000009', // Placeholder
     SESSION_KEY_POLICY_JSON: env.SESSION_KEY_POLICY_JSON,
+    WALLETLESS_PROVIDER: (env.WALLETLESS_PROVIDER as 'biconomy' | 'alchemy') || undefined, // Retrieve WALLETLESS_PROVIDER
   };
 };
 

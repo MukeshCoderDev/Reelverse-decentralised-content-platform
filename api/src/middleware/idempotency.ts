@@ -1,62 +1,48 @@
 import { Request, Response, NextFunction } from 'express';
-import { getRedisClient } from '../config/redis'; // Assuming a redis client getter
-import { logger } from '../utils/logger';
-import { env } from '../config/env';
+import Redis from 'ioredis';
+import { env } from '../config/env'; // Assuming env is configured for Redis URL
+import { logger } from '../utils/logger'; // Assuming a logger utility exists
 
-const IDEMPOTENCY_KEY_PREFIX = 'idemp';
+const redis = new Redis(env.REDIS_URL);
 const IDEMPOTENCY_TTL_SECONDS = 10 * 60; // 10 minutes
 
-export const idempotencyMiddleware = async (req: Request, res: Response, next: NextFunction) => {
-  if (req.method !== 'POST') {
-    return next();
-  }
-
-  const idempotencyKey = req.header('Idempotency-Key');
-  if (!idempotencyKey) {
-    return next();
-  }
-
-  const redisClient = getRedisClient();
-  const route = req.baseUrl + req.path;
-  const redisKey = `${IDEMPOTENCY_KEY_PREFIX}:${route}:${idempotencyKey}`;
-
-  try {
-    const cachedResponse = await redisClient.get(redisKey);
-
-    if (cachedResponse) {
-      logger.info(`Idempotency replay detected for key: ${redisKey}`);
-      const { status, body } = JSON.parse(cachedResponse);
-      res.setHeader('X-Idempotency-Replay', 'true');
-      return res.status(status).json(body);
+export function idempotencyMiddleware(req: Request, res: Response, next: NextFunction) {
+    if (req.method !== 'POST') {
+        return next();
     }
 
-    // Monkey-patch res.send and res.json to cache the response
-    const originalSend = res.send;
-    const originalJson = res.json;
+    const idempotencyKey = req.headers['idempotency-key'] as string;
+    if (!idempotencyKey) {
+        return next();
+    }
 
-    res.send = function (body?: any) {
-      if (res.statusCode >= 200 && res.statusCode < 300) {
-        const responseToCache = JSON.stringify({ status: res.statusCode, body: body ? JSON.parse(body) : {} });
-        redisClient.setex(redisKey, IDEMPOTENCY_TTL_SECONDS, responseToCache).catch(err => {
-          logger.error(`Failed to cache idempotency response for key ${redisKey}:`, err);
+    const route = req.baseUrl + req.path;
+    const redisKey = `idemp:${route}:${idempotencyKey}`;
+
+    redis.get(redisKey)
+        .then(cachedResponse => {
+            if (cachedResponse) {
+                logger.info(`Idempotency: Replaying cached response for key: ${idempotencyKey}, route: ${route}`);
+                const { status, body } = JSON.parse(cachedResponse);
+                res.setHeader('X-Idempotency-Replay', 'true');
+                return res.status(status).json(body);
+            } else {
+                // Store original send function
+                const originalSend = res.send;
+                res.send = (body: any) => {
+                    // Only cache successful responses
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        const responseToCache = JSON.stringify({ status: res.statusCode, body: JSON.parse(body) });
+                        redis.setex(redisKey, IDEMPOTENCY_TTL_SECONDS, responseToCache)
+                            .catch(err => logger.error(`Idempotency: Failed to cache response for key ${idempotencyKey}:`, err));
+                    }
+                    return originalSend.call(res, body);
+                };
+                next();
+            }
+        })
+        .catch(err => {
+            logger.error(`Idempotency: Redis error for key ${idempotencyKey}:`, err);
+            next(); // Continue processing even if Redis has issues
         });
-      }
-      return originalSend.apply(res, arguments as any);
-    } as Response['send'];
-
-    res.json = function (body?: any) {
-      if (res.statusCode >= 200 && res.statusCode < 300) {
-        const responseToCache = JSON.stringify({ status: res.statusCode, body: body });
-        redisClient.setex(redisKey, IDEMPOTENCY_TTL_SECONDS, responseToCache).catch(err => {
-          logger.error(`Failed to cache idempotency response for key ${redisKey}:`, err);
-        });
-      }
-      return originalJson.apply(res, arguments as any);
-    } as Response['json'];
-
-    next();
-  } catch (error: any) {
-    logger.error(`Error in idempotency middleware for key ${redisKey}:`, error);
-    next(error); // Pass error to next middleware
-  }
-};
+}

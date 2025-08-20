@@ -1,0 +1,46 @@
+.blur-container {
+  position: relative;
+  filter: blur(8px); /* Apply blur effect */
+  transition: filter 0.3s ease-in-out;
+}
+
+.blur-container.unblurred {
+  filter: blur(0);
+}
+
+.age-gate-banner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 15px 25px;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 1.2em;
+  z-index: 10; /* Ensure it's above the blurred content */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.age-gate-banner p {
+  margin: 0;
+}
+
+.banner-button {
+  background-color: #e50914; /* Netflix red-like color */
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1em;
+  transition: background-color 0.3s ease;
+}
+
+.banner-button:hover {
+  background-color: #b20710;
+}

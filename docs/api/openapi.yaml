@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: Reelverse API
   version: 1.0.0
-  description: API documentation for the Reelverse platform, including Account Abstraction, Paymaster, Upload, and Billing services.
+  description: API documentation for the Reelverse platform, including Account Abstraction, Paymaster, Upload, Billing, and Legal services.
 servers:
   - url: /api/v1
     description: Main API server
@@ -16,7 +16,76 @@ tags:
     description: Content upload pipeline management.
   - name: Billing
     description: Credit and escrow management for user accounts.
+  - name: Legal
+    description: Legal compliance endpoints, including DMCA takedown requests.
+
 paths:
+  /api/v1/legal/dmca:
+    post:
+      summary: Submit DMCA Takedown Request
+      tags:
+        - Legal
+      description: Allows users to submit a DMCA takedown request for infringing content.
+      operationId: submitDmcaTakedown
+      parameters:
+        - $ref: '#/components/headers/X-Request-ID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DmcaTakedownRequest'
+      responses:
+        '201':
+          description: DMCA takedown request submitted successfully.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DmcaTakedownResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      summary: Get DMCA Takedown Request Details
+      tags:
+        - Legal
+      description: Retrieves the details and current status of a specific DMCA takedown request.
+      operationId: getDmcaTakedownDetails
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The unique ID of the DMCA takedown request.
+          schema:
+            type: string
+            format: uuid
+            example: "g1h2i3j4-k5l6-7890-1234-567890ghijkl"
+        - $ref: '#/components/headers/X-Request-ID'
+      responses:
+        '200':
+          description: DMCA takedown request details retrieved successfully.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DmcaTakedownDetails'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          description: DMCA takedown request not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   /api/v1/aa/account:
     get:
       summary: Get Smart Account Details
@@ -25,10 +94,14 @@ paths:
       description: Retrieves the counterfactual smart account address for the authenticated user, its deployment status, and relevant chain information.
       security:
         - BearerAuth: []
-        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/headers/X-Request-ID'
       responses:
         '200':
           description: Smart account details retrieved successfully.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
           content:
             application/json:
               schema:
@@ -67,9 +140,14 @@ paths:
       description: Retrieves a list of active session keys for the authenticated user's smart account.
       security:
         - BearerAuth: []
+      parameters:
+        - $ref: '#/components/headers/X-Request-ID'
       responses:
         '200':
           description: Active session keys retrieved successfully.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
           content:
             application/json:
               schema:
@@ -128,6 +206,9 @@ paths:
         For `AUTH_PROVIDER=privy`, use the `/api/v1/aa/userop/prepare` and `/api/v1/aa/userop/submit` flow.
       security:
         - BearerAuth: []
+      parameters:
+        - $ref: '#/components/headers/X-Request-ID'
+        - $ref: '#/components/headers/Idempotency-Key'
       requestBody:
         required: true
         content:
@@ -161,6 +242,9 @@ paths:
       responses:
         '201':
           description: Session key creation initiated. UserOp hash returned for tracking.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
           content:
             application/json:
               schema:
@@ -177,6 +261,22 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '409':
+          description: Conflict - Idempotent request already processed.
+          headers:
+            X-Idempotency-Replay:
+              $ref: '#/components/headers/X-Idempotency-Replay'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Idempotent request already processed."
+                  originalResponse:
+                    type: object
+                    description: The original response body.
         '429':
           $ref: '#/components/responses/RateLimitedError'
         '500':
@@ -202,6 +302,9 @@ paths:
         For `AUTH_PROVIDER=privy`, revocation should be handled client-side or via a different flow.
       security:
         - BearerAuth: []
+      parameters:
+        - $ref: '#/components/headers/X-Request-ID'
+        - $ref: '#/components/headers/Idempotency-Key'
       requestBody:
         required: true
         content:
@@ -219,6 +322,9 @@ paths:
       responses:
         '200':
           description: Session key revoked and revocation UserOp submitted successfully.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
           content:
             application/json:
               schema:
@@ -241,6 +347,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict - Idempotent request already processed.
+          headers:
+            X-Idempotency-Replay:
+              $ref: '#/components/headers/X-Idempotency-Replay'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Idempotent request already processed."
+                  originalResponse:
+                    type: object
+                    description: The original response body.
         '429':
           $ref: '#/components/responses/RateLimitedError'
         '500':
@@ -266,6 +388,9 @@ paths:
         For `AUTH_PROVIDER=privy`, use the `/api/v1/aa/userop/prepare` and `/api/v1/aa/userop/submit` flow.
       security:
         - BearerAuth: []
+      parameters:
+        - $ref: '#/components/headers/X-Request-ID'
+        - $ref: '#/components/headers/Idempotency-Key'
       requestBody:
         required: true
         content:
@@ -291,6 +416,9 @@ paths:
       responses:
         '200':
           description: User operation sponsored and sent successfully.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
           content:
             application/json:
               schema:
@@ -314,6 +442,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict - Idempotent request already processed.
+          headers:
+            X-Idempotency-Replay:
+              $ref: '#/components/headers/X-Idempotency-Replay'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Idempotent request already processed."
+                  originalResponse:
+                    type: object
+                    description: The original response body.
         '429':
           $ref: '#/components/responses/RateLimitedError'
         '500':
@@ -327,186 +471,151 @@ paths:
                 example:
                   error: "not_implemented"
                   message: "Please use the /api/v1/aa/userop/prepare + /api/v1/aa/userop/submit flow for sponsored actions with Privy."
-/api/v1/aa/userop/prepare:
- post:
-   summary: Prepare User Operation for Client-Side Signing
-   tags:
-     - Account Abstraction (AA)
-   description: >
-     Prepares a UserOperation for client-side signing by filling in nonce, gas estimates,
-     and paymaster data. Returns the unsigned UserOperation and its hash.
-     This endpoint is used when `AUTH_PROVIDER=privy`.
-   security:
-     - BearerAuth: []
-   requestBody:
-     required: true
-     content:
-       application/json:
-         schema:
-           type: object
-           required:
-             - kind
-           properties:
-             kind:
-               type: string
-               enum: ['call', 'session_install']
-               description: The type of user operation to prepare.
-               example: "call"
-             to:
-               type: string
-               description: The recipient address for 'call' operations.
-               example: "0xTargetContractAddress"
-             data:
-               type: string
-               description: The calldata for 'call' operations.
-               example: "0xabcdef1234567890"
-             value:
-               type: string
-               description: The amount of native currency to send (in wei, as string) for 'call' operations.
-               example: "1000000000000000000"
-             scope:
-               type: string
-               description: JSON string of the session key policy for 'session_install' operations.
-               example: '{"targets":["0xContentAccessGateAddress"],"selectors":["0xabcdef01"]}'
-             ttlMins:
-               type: number
-               description: Time-to-live in minutes for the session key for 'session_install' operations.
-               example: 60
-   responses:
-     '200':
-       description: User operation prepared successfully.
-       content:
-         application/json:
-           schema:
-             type: object
-             properties:
-               userOp:
-                 type: object
-                 description: The unsigned UserOperation object.
-                 # Define UserOperationStruct properties here if needed, or reference a schema
-               userOpHash:
-                 type: string
-                 description: The hash of the UserOperation, to be signed by the client.
-                 example: "0xabc123..."
-     '400':
-       $ref: '#/components/responses/ValidationError'
-     '401':
-       $ref: '#/components/responses/UnauthorizedError'
-     '500':
-       $ref: '#/components/responses/InternalServerError'
+  /api/v1/aa/userop/prepare:
+    post:
+      summary: Prepare User Operation for Client-Side Signing
+      tags:
+        - Account Abstraction (AA)
+      description: >
+        Prepares a UserOperation for client-side signing by filling in nonce, gas estimates,
+        and paymaster data. Returns the unsigned UserOperation and its hash.
+        This endpoint is used when `AUTH_PROVIDER=privy`.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/headers/X-Request-ID'
+        - $ref: '#/components/headers/Idempotency-Key'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - kind
+              properties:
+                kind:
+                  type: string
+                  enum: ['call', 'session_install']
+                  description: The type of user operation to prepare.
+                  example: "call"
+                to:
+                  type: string
+                  description: The recipient address for 'call' operations.
+                  example: "0xTargetContractAddress"
+                data:
+                  type: string
+                  description: The calldata for 'call' operations.
+                  example: "0xabcdef1234567890"
+                value:
+                  type: string
+                  description: The amount of native currency to send (in wei, as string).
+                  example: "1000000000000000000"
+                scope:
+                  type: string
+                  description: JSON string of the session key policy for 'session_install' operations.
+                  example: '{"targets":["0xContentAccessGateAddress"],"selectors":["0xabcdef01"]}'
+                ttlMins:
+                  type: number
+                  description: Time-to-live in minutes for the session key for 'session_install' operations.
+                  example: 60
+      responses:
+        '200':
+          description: User operation prepared successfully.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userOp:
+                    type: object
+                    description: The unsigned UserOperation object.
+                    # Define UserOperationStruct properties here if needed, or reference a schema
+                  userOpHash:
+                    type: string
+                    description: The hash of the UserOperation, to be signed by the client.
+                    example: "0xabc123..."
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '409':
+          description: Conflict - Idempotent request already processed.
+          headers:
+            X-Idempotency-Replay:
+              $ref: '#/components/headers/X-Idempotency-Replay'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Idempotent request already processed."
+                  originalResponse:
+                    type: object
+                    description: The original response body.
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
-/api/v1/aa/userop/submit:
- post:
-   summary: Submit Signed User Operation
-   tags:
-     - Account Abstraction (AA)
-   description: >
-     Accepts a signed UserOperation and submits it to the bundler.
-     This endpoint is used when `AUTH_PROVIDER=privy`.
-   security:
-     - BearerAuth: []
-   requestBody:
-     required: true
-     content:
-       application/json:
-         schema:
-           type: object
-           required:
-             - userOp
-             - signature
-           properties:
-             userOp:
-               type: object
-               description: The complete UserOperation object, including the signature.
-               # Define UserOperationStruct properties here if needed, or reference a schema
-             signature:
-               type: string
-               description: The signature generated by the client for the userOpHash.
-               example: "0xSignatureFromClient"
-   responses:
-     '200':
-       description: User operation submitted successfully.
-       content:
-         application/json:
-           schema:
-             type: object
-             properties:
-               userOpHash:
-                 type: string
-                 description: Hash of the submitted UserOperation.
-                 example: "0xabc123..."
-               txHash:
-                 type: string
-                 description: Hash of the bundled transaction (if available).
-                 example: "0xdef456..."
-               receipt:
-                 type: object
-                 description: The full user operation receipt (if available).
-     '400':
-       $ref: '#/components/responses/ValidationError'
-     '401':
-       $ref: '#/components/responses/UnauthorizedError'
-     '500':
-       $ref: '#/components/responses/InternalServerError'
-
-components:
- securitySchemes:
-   BearerAuth:
-     type: http
-     scheme: bearer
-     bearerFormat: JWT
- responses:
-   UnauthorizedError:
-     description: Authentication information is missing or invalid.
-     content:
-       application/json:
-         schema:
-           $ref: '#/components/schemas/Error'
-           example:
-             error: "unauthorized"
-             message: "Invalid or missing authentication token."
-   ValidationError:
-     description: Invalid input provided.
-     content:
-       application/json:
-         schema:
-           $ref: '#/components/schemas/Error'
-           example:
-             error: "validation_error"
-             message: "Invalid input for field 'ttlMins'."
-   RateLimitedError:
-     description: Too many requests.
-     headers:
-       Retry-After:
-         schema:
-           type: integer
-           format: int32
-           description: Number of seconds to wait before retrying.
-     content:
-       application/json:
-         schema:
-           $ref: '#/components/schemas/Error'
-           example:
-             error: "rate_limited"
-             message: "Too many requests, please try again after 60 seconds."
-   InternalServerError:
-     description: An unexpected error occurred on the server.
-     content:
-       application/json:
-         schema:
-           $ref: '#/components/schemas/Error'
-           example:
-             error: "internal_server_error"
-             message: "An unexpected error occurred."
- schemas:
-   Error:
-     type: object
-     properties:
-       error:
-         type: string
-         description: A machine-readable error code.
-         example: "unauthorized"
-       message:
-         type: string
-         description: A human-readable error message.
-         example: "Authentication information is missing or invalid."
+  /api/v1/aa/userop/submit:
+    post:
+      summary: Submit Signed User Operation
+      tags:
+        - Account Abstraction (AA)
+      description: >
+        Accepts a signed UserOperation and submits it to the bundler.
+        This endpoint is used when `AUTH_PROVIDER=privy`.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/headers/X-Request-ID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userOp
+                - signature
+            properties:
+              userOp:
+                type: object
+                description: The complete UserOperation object, including the signature.
+                # Define UserOperationStruct properties here if needed, or reference a schema
+              signature:
+                type: string
+                description: The signature generated by the client for the userOpHash.
+                example: "0xSignatureFromClient"
+      responses:
+        '200':
+          description: User operation submitted successfully.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userOpHash:
+                    type: string
+                    description: Hash of the submitted UserOperation.
+                    example: "0xabc123..."
+                  txHash:
+                    type: string
+                    description: Hash of the bundled transaction (if available).
+                    example: "0xdef456..."
+                receipt:
+                  type: object
+                  description: The full user operation receipt (if available).
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'

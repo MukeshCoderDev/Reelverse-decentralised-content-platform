@@ -1,18 +1,19 @@
+import { logger } from '../../utils/logger';
 import axios from 'axios';
 import { PaymasterResult, UserOperation } from './paymasterService';
 import { env } from '../../config/env';
 import { currentChainConfig } from '../../config/chain';
 
 export class BiconomyPaymasterService {
- 
+  
   constructor() {}
 
   /**
    * Get paymaster data from Biconomy
    */
-  async getPaymasterData(userOp: Partial<UserOperation>): Promise<PaymasterResult> {
+  async getPaymasterData(userOp: Partial<UserOperation> & { requestId?: string }): Promise<PaymasterResult> {
     try {
-      console.log('Getting paymaster data from Biconomy');
+      logger.info('Getting paymaster data from Biconomy', { requestId: userOp.requestId });
 
       if (!env.BICONOMY_PAYMASTER_URL || !env.BICONOMY_API_KEY) {
         throw new Error('Biconomy paymaster URL or API key is not configured in environment variables.');
@@ -67,7 +68,7 @@ export class BiconomyPaymasterService {
       };
 
     } catch (error: any) {
-      console.error('Biconomy paymaster request failed:', error);
+      logger.error(`Biconomy paymaster request failed: ${error.message}`, { requestId: userOp.requestId, error });
       throw new Error(`Failed to get Biconomy paymaster data: ${error.message}`);
     }
   }
@@ -75,9 +76,9 @@ export class BiconomyPaymasterService {
   /**
    * Submit user operation via Biconomy bundler
    */
-  async submitUserOperation(userOp: UserOperation): Promise<string> {
+  async submitUserOperation(userOp: UserOperation & { requestId?: string }): Promise<string> {
     try {
-      console.log('Submitting user operation via Biconomy bundler');
+      logger.info('Submitting user operation via Biconomy bundler', { requestId: userOp.requestId });
 
       if (!env.BICONOMY_BUNDLER_URL || !env.BICONOMY_API_KEY) {
         throw new Error('Biconomy bundler URL or API key is not configured in environment variables.');
@@ -105,12 +106,12 @@ export class BiconomyPaymasterService {
       }
 
       const userOpHash = response.data.result;
-      console.log(`User operation submitted: ${userOpHash}`);
+      logger.info(`User operation submitted: ${userOpHash}`, { requestId: userOp.requestId, userOpHash });
       
       return userOpHash;
 
     } catch (error: any) {
-      console.error('Biconomy bundler submission failed:', error);
+      logger.error(`Biconomy bundler submission failed: ${error.message}`, { requestId: userOp.requestId, error });
       throw new Error(`Failed to submit user operation: ${error.message}`);
     }
   }
@@ -118,7 +119,7 @@ export class BiconomyPaymasterService {
   /**
    * Get user operation receipt
    */
-  async getUserOperationReceipt(userOpHash: string): Promise<any> {
+  async getUserOperationReceipt(userOpHash: string, requestId?: string): Promise<any> {
     try {
       if (!env.BICONOMY_BUNDLER_URL || !env.BICONOMY_API_KEY) {
         throw new Error('Biconomy bundler URL or API key is not configured in environment variables.');
@@ -140,7 +141,7 @@ export class BiconomyPaymasterService {
       return response.data.result;
 
     } catch (error: any) {
-      console.error('Failed to get user operation receipt:', error);
+      logger.error(`Failed to get user operation receipt: ${error.message}`, { requestId, userOpHash, error });
       throw error;
     }
   }
@@ -148,7 +149,7 @@ export class BiconomyPaymasterService {
   /**
    * Get supported entry points
    */
-  async getSupportedEntryPoints(): Promise<string[]> {
+  async getSupportedEntryPoints(requestId?: string): Promise<string[]> {
     try {
       if (!env.BICONOMY_BUNDLER_URL || !env.BICONOMY_API_KEY) {
         throw new Error('Biconomy bundler URL or API key is not configured in environment variables.');
@@ -170,7 +171,7 @@ export class BiconomyPaymasterService {
       return response.data.result;
 
     } catch (error: any) {
-      console.error('Failed to get supported entry points:', error);
+      logger.error(`Failed to get supported entry points: ${error.message}`, { requestId, error });
       throw error;
     }
   }
@@ -183,9 +184,9 @@ export class AlchemyPaymasterService {
   /**
    * Get paymaster data from Alchemy
    */
-  async getPaymasterData(userOp: Partial<UserOperation>): Promise<PaymasterResult> {
+  async getPaymasterData(userOp: Partial<UserOperation> & { requestId?: string }): Promise<PaymasterResult> {
     try {
-      console.log('Getting paymaster data from Alchemy');
+      logger.info('Getting paymaster data from Alchemy', { requestId: userOp.requestId });
 
       if (!env.ALCHEMY_RPC_URL || !env.ALCHEMY_API_KEY || !env.ALCHEMY_POLICY_ID) {
         throw new Error('Alchemy RPC URL, API key, or Policy ID is not configured in environment variables.');
@@ -238,7 +239,7 @@ export class AlchemyPaymasterService {
       };
 
     } catch (error: any) {
-      console.error('Alchemy paymaster request failed:', error);
+      logger.error(`Alchemy paymaster request failed: ${error.message}`, { requestId: userOp.requestId, error });
       throw new Error(`Failed to get Alchemy paymaster data: ${error.message}`);
     }
   }
@@ -246,9 +247,9 @@ export class AlchemyPaymasterService {
   /**
    * Submit user operation via Alchemy
    */
-  async submitUserOperation(userOp: UserOperation): Promise<string> {
+  async submitUserOperation(userOp: UserOperation & { requestId?: string }): Promise<string> {
     try {
-      console.log('Submitting user operation via Alchemy');
+      logger.info('Submitting user operation via Alchemy', { requestId: userOp.requestId });
 
       if (!env.ALCHEMY_RPC_URL || !env.ALCHEMY_API_KEY) {
         throw new Error('Alchemy RPC URL or API key is not configured in environment variables.');
@@ -278,12 +279,12 @@ export class AlchemyPaymasterService {
       }
 
       const userOpHash = response.data.result;
-      console.log(`User operation submitted via Alchemy: ${userOpHash}`);
+      logger.info(`User operation submitted via Alchemy: ${userOpHash}`, { requestId: userOp.requestId, userOpHash });
       
       return userOpHash;
 
     } catch (error: any) {
-      console.error('Alchemy submission failed:', error);
+      logger.error(`Alchemy submission failed: ${error.message}`, { requestId: userOp.requestId, error });
       throw new Error(`Failed to submit user operation via Alchemy: ${error.message}`);
     }
   }
@@ -291,7 +292,7 @@ export class AlchemyPaymasterService {
   /**
    * Get gas estimates from Alchemy
    */
-  async estimateUserOperationGas(userOp: Partial<UserOperation>): Promise<any> {
+  async estimateUserOperationGas(userOp: Partial<UserOperation> & { requestId?: string }): Promise<any> {
     try {
       if (!env.ALCHEMY_RPC_URL || !env.ALCHEMY_API_KEY) {
         throw new Error('Alchemy RPC URL or API key is not configured in environment variables.');
@@ -317,7 +318,7 @@ export class AlchemyPaymasterService {
       return response.data.result;
 
     } catch (error: any) {
-      console.error('Alchemy gas estimation failed:', error);
+      logger.error(`Alchemy gas estimation failed: ${error.message}`, { requestId: userOp.requestId, error });
       throw error;
     }
   }
@@ -332,6 +333,7 @@ export class UnifiedPaymasterService {
   private preferredProvider: 'biconomy' | 'alchemy';
 
   constructor() {
+    // Assuming env.WALLETLESS_PROVIDER exists and is configured
     if (env.WALLETLESS_PROVIDER === 'biconomy' || env.WALLETLESS_PROVIDER === 'alchemy') {
       this.preferredProvider = env.WALLETLESS_PROVIDER;
     } else {
@@ -350,7 +352,7 @@ export class UnifiedPaymasterService {
   /**
    * Get paymaster data with fallback between providers
    */
-  async getPaymasterData(userOp: Partial<UserOperation>): Promise<PaymasterResult> {
+  async getPaymasterData(userOp: Partial<UserOperation> & { requestId?: string }): Promise<PaymasterResult> {
     const providers = this.getProviderOrder();
 
     for (const provider of providers) {
@@ -361,7 +363,7 @@ export class UnifiedPaymasterService {
           return await this.alchemy.getPaymasterData(userOp);
         }
       } catch (error: any) {
-        console.warn(`${provider} paymaster failed, trying next provider:`, error.message);
+        logger.warn(`${provider} paymaster failed, trying next provider: ${error.message}`, { requestId: userOp.requestId, provider, error });
         continue;
       }
     }
@@ -372,7 +374,7 @@ export class UnifiedPaymasterService {
   /**
    * Submit user operation with fallback
    */
-  async submitUserOperation(userOp: UserOperation): Promise<string> {
+  async submitUserOperation(userOp: UserOperation & { requestId?: string }): Promise<string> {
     const providers = this.getProviderOrder();
 
     for (const provider of providers) {
@@ -383,7 +385,7 @@ export class UnifiedPaymasterService {
           return await this.alchemy.submitUserOperation(userOp);
         }
       } catch (error: any) {
-        console.warn(`${provider} submission failed, trying next provider:`, error.message);
+        logger.warn(`${provider} submission failed, trying next provider: ${error.message}`, { requestId: userOp.requestId, provider, error });
         continue;
       }
     }
@@ -405,15 +407,15 @@ export class UnifiedPaymasterService {
   /**
    * Health check for all providers
    */
-  async healthCheck(): Promise<{ biconomy: boolean; alchemy: boolean }> {
+  async healthCheck(requestId?: string): Promise<{ biconomy: boolean; alchemy: boolean }> {
     const health = { biconomy: false, alchemy: false };
 
     if (this.biconomy) {
       try {
-        await this.biconomy.getSupportedEntryPoints();
+        await this.biconomy.getSupportedEntryPoints(requestId);
         health.biconomy = true;
       } catch (error: any) {
-        console.warn('Biconomy health check failed:', error.message);
+        logger.warn(`Biconomy health check failed: ${error.message}`, { requestId, error });
       }
     }
 
@@ -424,14 +426,14 @@ export class UnifiedPaymasterService {
           sender: '0x0000000000000000000000000000000000000000',
           nonce: '0x0',
           callData: '0x'
-        });
+        }); // Removed requestId
         health.alchemy = true;
       } catch (error: any) {
         // Expected to fail with invalid data, but service should be reachable
         if (error.message.includes('invalid') || error.message.includes('revert')) {
           health.alchemy = true;
         } else {
-          console.warn('Alchemy health check failed:', error.message);
+          logger.warn(`Alchemy health check failed: ${error.message}`, { requestId, error });
         }
       }
     }

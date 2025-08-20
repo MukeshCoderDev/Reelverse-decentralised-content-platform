@@ -56,6 +56,7 @@ Here's a table of useful scripts:
 | `test:api`      | `api/`   | Runs all unit and integration tests for the API.                         |
 | `e2e:api`       | `api/`   | Runs end-to-end tests for the API (requires specific env vars/secrets).  |
 | `aa:health`     | `scripts/aa/` | Checks the health and configuration of Account Abstraction components. |
+| `canary:aa`     | `api/scripts/canary/` | Runs an hourly sponsored User Operation health check (non-prod). |
 
 ## CI/CD Overview (GitHub Actions)
 
@@ -79,3 +80,16 @@ The `e2e` job requires the following GitHub Secrets to be configured in your rep
 *   `PAYMASTER_URL`: The URL of the paymaster service (e.g., Biconomy, Alchemy).
 
 Without these secrets, the `e2e` job will be skipped.
+
+## Age-Gate Interstitial
+
+The frontend includes an 18+ age-gate interstitial to restrict access to sensitive content.
+
+*   **Toggle**: The age-gate is controlled by the `VITE_AGE_GATE_ENABLED` environment variable in the frontend's `.env` file. Set to `true` to enable, `false` to disable.
+*   **Remember Period**: The acceptance of the age-gate is remembered for a configurable number of days, specified by `VITE_AGE_GATE_REMEMBER_DAYS` (default: 30 days). This preference is persisted in `localStorage` and a cookie.
+
+## Documentation
+
+*   **Launch Guide**: Detailed steps for deploying and managing the platform: [`docs/LAUNCH.md`](docs/LAUNCH.md)
+*   **Alerts Runbook**: Procedures for responding to critical system alerts: [`docs/runbooks/alerts.md`](docs/runbooks/alerts.md)
+*   **Legal Information**: DMCA policy and other legal notices: [`docs/legal/README.md`](docs/legal/README.md)

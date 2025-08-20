@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express'; // Explicitly import types
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -59,6 +59,8 @@ import aaRoutes from './routes/aa';
 import aaClientSignRoutes from './routes/aaClientSign'; // Import new AA client signing routes
 import billingRoutes from './routes/billing'; // Import new billing routes
 import docsRoutes from './routes/docs'; // Import docs routes
+import legalRoutes from './routes/legal'; // Import legal routes
+import complianceRoutes from './routes/compliance'; // Import compliance routes
 
 // Load environment variables
 dotenv.config();
@@ -93,15 +95,12 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 // Allow idempotency and correlation headers from clients
-import { Request, Response, NextFunction } from 'express';
-
 app.use((req: Request, res: Response, next: NextFunction) => {
-  res.setHeader('Access-Control-Expose-Headers', 'X-Idempotency-Key, X-Correlation-ID');
+  res.setHeader('Access-Control-Expose-Headers', 'X-Request-ID, X-Idempotency-Replay');
   next();
 });
 
-
-// Enhanced middleware
+// Apply correlationId early (before routes)
 app.use(correlationIdMiddleware);
 
 // Body parsing middleware
@@ -189,15 +188,25 @@ app.use(`/api/${API_VERSION}/admin/reconciler`, reconcilerAdmin);
 
 if (env.AUTH_PROVIDER === 'privy') {
   app.use(`/api/${API_VERSION}/aa`, requirePrivyAuth, aaClientSignRoutes); // Use new client signing routes
+  app.post(`/api/${API_VERSION}/aa/sponsor-and-send`, requirePrivyAuth, idempotencyMiddleware, aaClientSignRoutes); // Apply idempotency
   app.use(`/api/${API_VERSION}/billing`, requirePrivyAuth, billingRoutes);
+  app.post(`/api/${API_VERSION}/billing/credit`, requirePrivyAuth, idempotencyMiddleware, billingRoutes); // Apply idempotency
+  app.post(`/api/${API_VERSION}/billing/hold`, requirePrivyAuth, idempotencyMiddleware, billingRoutes); // Apply idempotency
+  app.post(`/api/${API_VERSION}/billing/escrow`, requirePrivyAuth, idempotencyMiddleware, billingRoutes); // Apply idempotency
   app.use(`/api/${API_VERSION}/upload`, requirePrivyAuth, uploadRoutes);
 } else {
   app.use(`/api/${API_VERSION}/aa`, aaRoutes); // Keep existing server-side signing for dev
+  app.post(`/api/${API_VERSION}/aa/sponsor-and-send`, idempotencyMiddleware, aaRoutes); // Apply idempotency
   app.use(`/api/${API_VERSION}/billing`, billingRoutes);
+  app.post(`/api/${API_VERSION}/billing/credit`, idempotencyMiddleware, billingRoutes); // Apply idempotency
+  app.post(`/api/${API_VERSION}/billing/hold`, idempotencyMiddleware, billingRoutes); // Apply idempotency
+  app.post(`/api/${API_VERSION}/billing/escrow`, idempotencyMiddleware, billingRoutes); // Apply idempotency
   app.use(`/api/${API_VERSION}/upload`, uploadRoutes);
 }
 
 app.use(`/api/${API_VERSION}`, docsRoutes); // Add docs routes
+app.use(`/api/${API_VERSION}/legal`, legalRoutes); // Add legal routes
+app.use(`/api/${API_VERSION}/compliance`, complianceRoutes); // Add compliance routes
 
 // Error handling middleware
 app.use(notFoundHandler);
