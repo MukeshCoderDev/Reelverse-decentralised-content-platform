@@ -1,0 +1,22 @@
+{
+  "name": "reelverse-contracts",
+  "version": "2.0.0",
+  "private": true,
+  "scripts": {
+    "build": "hardhat compile",
+    "test": "hardhat test",
+    "deploy": "hardhat run scripts/deploy_v2.ts --network sepolia",
+    "deploy:base": "hardhat run scripts/deploy_v2.ts --network base_sepolia",
+    "create:content": "hardhat run scripts/create_content.ts --network sepolia"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "typescript": "^5.4.0",
+    "ts-node": "^10.9.2",
+    "hardhat": "^2.22.5",
+    "dotenv": "^16.4.5"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.2"
+  }
+}
