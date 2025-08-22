@@ -1,5 +1,5 @@
 // src/components/auth/SignInModal.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "../../auth/AuthProvider";
 import { PhoneSignIn } from "./PhoneSignIn";
 import { EmailSignIn } from "./EmailSignIn";
@@ -16,13 +16,35 @@ export const SignInModal: React.FC = () => {
   const { isSignInModalOpen, closeSignInModal, error } = useAuth();
   const [activeTab, setActiveTab] = useState(AUTH_CHANNELS[0]);
   const i18n = getLang(); // Get localized strings
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  const handleClose = useCallback(() => {
+    closeSignInModal();
+  }, [closeSignInModal]);
 
   useEffect(() => {
     if (isSignInModalOpen) {
-      // Reset active tab when modal opens
-      setActiveTab(AUTH_CHANNELS[0]);
+      setActiveTab(AUTH_CHANNELS[0]); // Reset active tab when modal opens
+      const handleKeyDown = (event: KeyboardEvent) => {
+        if (event.key === "Escape") {
+          handleClose();
+        }
+      };
+      document.addEventListener("keydown", handleKeyDown);
+
+      // Focus trap
+      const focusableElements = modalRef.current?.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusableElements && focusableElements.length > 0) {
+        (focusableElements[0] as HTMLElement).focus();
+      }
+
+      return () => {
+        document.removeEventListener("keydown", handleKeyDown);
+      };
     }
-  }, [isSignInModalOpen]);
+  }, [isSignInModalOpen, handleClose]);
 
   if (!isSignInModalOpen) {
     return null;
@@ -31,14 +53,15 @@ export const SignInModal: React.FC = () => {
   return (
     <Modal
       isOpen={isSignInModalOpen}
-      onClose={closeSignInModal}
-      title={i18n.signInTitle}
-      className="rv-card w-[400px] max-w-[90vw] p-6 sm:p-8" // Apply card styling
+      onClose={handleClose}
+      className="rv-card w-[400px] max-w-[90vw] p-6 sm:p-8"
       overlayClassName="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
       contentClassName="relative bg-rv-surface rounded-rv-md shadow-rv-2"
+      role="dialog"
       aria-modal="true"
       aria-labelledby="signin-modal-title"
       aria-describedby="signin-modal-description"
+      ref={modalRef}
     >
       <h2 id="signin-modal-title" className="text-2xl font-bold text-center mb-6">
         {i18n.signInTitle}
@@ -46,7 +69,7 @@ export const SignInModal: React.FC = () => {
 
       {error && (
         <div
-          className="bg-rv-danger text-rv-primary-contrast p-3 rounded-rv-sm mb-4 text-center"
+          className="bg-rv-danger text-rv-primary-contrast p-3 rounded-rv-sm mb-4 text-center rv-error"
           role="alert"
         >
           {error}

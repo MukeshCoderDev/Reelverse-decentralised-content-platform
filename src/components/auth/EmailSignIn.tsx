@@ -1,5 +1,5 @@
 // src/components/auth/EmailSignIn.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../auth/AuthProvider";
 import { getLang } from "../../i18n/auth";
 
@@ -12,15 +12,22 @@ export const EmailSignIn: React.FC = () => {
   const [step, setStep] = useState<"inputEmail" | "verifyOtp">("inputEmail");
   const [resendCountdown, setResendCountdown] = useState(0);
   const i18n = getLang();
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
     if (step === "verifyOtp" && resendCountdown > 0) {
-      timer = setInterval(() => {
+      intervalRef.current = setInterval(() => {
         setResendCountdown((prev) => prev - 1);
       }, 1000);
+    } else if (resendCountdown === 0 && intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
-    return () => clearInterval(timer);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
   }, [step, resendCountdown]);
 
   const handleStartOtp = async (e: React.FormEvent, isResend = false) => {
@@ -57,12 +64,12 @@ export const EmailSignIn: React.FC = () => {
   const isOtpValid = otpCode.length === 6; // Assuming 6-digit OTP
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {step === "inputEmail" ? (
-        <form onSubmit={handleStartOtp} className="space-y-4">
+        <form onSubmit={handleStartOtp} className="space-y-6">
           <div>
-            <label htmlFor="email" className="sr-only">
-              {i18n.emailPlaceholder}
+            <label htmlFor="email" className="block text-sm font-medium text-rv-text mb-1">
+              {i18n.emailAddressLabel}
             </label>
             <input
               type="email"
@@ -70,13 +77,13 @@ export const EmailSignIn: React.FC = () => {
               className="rv-input w-full"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder={i18n.emailPlaceholder}
+              placeholder={i18n.enterEmailAddressHint}
               required
               disabled={isLoading}
               aria-invalid={error ? "true" : "false"}
               aria-describedby={error ? "email-error" : undefined}
             />
-            {error && <p id="email-error" className="text-rv-danger text-sm mt-1">{i18n.invalidEmail}</p>}
+            {error && <p id="email-error" className="rv-error">{i18n.invalidEmail}</p>}
           </div>
           <button
             type="submit"
@@ -88,27 +95,30 @@ export const EmailSignIn: React.FC = () => {
           </button>
         </form>
       ) : (
-        <form onSubmit={handleVerifyOtp} className="space-y-4">
+        <form onSubmit={handleVerifyOtp} className="space-y-6">
           <p className="text-rv-muted text-sm text-center">
-            {i18n.resendIn.replace("{seconds}", resendCountdown.toString())}
+            {i18n.codeSentTo.replace("{destination}", maskedEmail || "")}
           </p>
           <div>
-            <label htmlFor="otpCode" className="sr-only">
-              {i18n.otpPlaceholder}
+            <label htmlFor="otpCode" className="block text-sm font-medium text-rv-text mb-1">
+              {i18n.verificationCodeLabel}
             </label>
             <input
               type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               id="otpCode"
               className="rv-input w-full text-center tracking-widest"
               value={otpCode}
               onChange={(e) => setOtpCode(e.target.value)}
-              placeholder={i18n.otpPlaceholder}
+              placeholder={i18n.enterVerificationCodeHint}
+              maxLength={6}
               required
               disabled={isLoading}
               aria-invalid={error ? "true" : "false"}
               aria-describedby={error ? "otp-error" : undefined}
             />
-            {error && <p id="otp-error" className="text-rv-danger text-sm mt-1">{i18n.invalidOtp}</p>}
+            {error && <p id="otp-error" className="rv-error">{i18n.invalidOtp}</p>}
           </div>
           <button
             type="submit"
@@ -118,14 +128,23 @@ export const EmailSignIn: React.FC = () => {
           >
             {isLoading ? i18n.verifying : i18n.continueButton}
           </button>
-          <button
-            type="button"
-            onClick={(e) => handleStartOtp(e, true)}
-            className="rv-btn rv-ghost w-full"
-            disabled={isLoading || resendCountdown > 0}
-          >
-            {i18n.resendNow}
-          </button>
+          <div className="flex justify-center mt-4">
+            {resendCountdown > 0 ? (
+              <span className="text-rv-muted text-sm">
+                {i18n.resendIn.replace("{seconds}", resendCountdown.toString())}
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={(e) => handleStartOtp(e, true)}
+                className="rv-btn rv-ghost text-sm"
+                disabled={isLoading}
+              >
+                {i18n.resendNow}
+              </button>
+            )}
+          </div>
+          {error && <p className="rv-error text-center mt-2">{i18n.tryAgain}</p>}
         </form>
       )}
     </div>

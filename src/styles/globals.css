@@ -74,6 +74,12 @@ body {
   background: #e03e35; /* Darker red for hover */
 }
 
+.rv-error {
+  color: var(--rv-danger);
+  font-size: var(--rv-font-size-sm);
+  margin-top: 4px;
+}
+
 /* Focus-visible outlines */
 :focus-visible {
   outline: 2px solid var(--rv-primary);

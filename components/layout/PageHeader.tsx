@@ -21,9 +21,9 @@ export function PageHeader({ id, title, actions }: { id: keyof typeof benchmarks
                     onMouseEnter={() => setTooltipVisible(true)}
                     onMouseLeave={() => setTooltipVisible(false)}
                 >
-                    <Icon name="info" className="h-4 w-4 text-muted-foreground cursor-help" />
+                    <Icon name="info" className="h-4 w-4 text-rv-muted cursor-help" />
                     {tooltipVisible && (
-                        <div className="absolute left-0 top-full mt-2 w-max max-w-xs z-10 bg-secondary text-secondary-foreground rounded-md px-3 py-2 text-sm shadow-lg">
+                        <div className="absolute left-0 top-full mt-2 w-max max-w-xs z-10 bg-rv-elev text-rv-text rounded-rv-md px-3 py-2 text-sm shadow-rv-1">
                             <p className="font-semibold">Benchmarked Against:</p>
                             <p>{benchmarks[id]}</p>
                         </div>
