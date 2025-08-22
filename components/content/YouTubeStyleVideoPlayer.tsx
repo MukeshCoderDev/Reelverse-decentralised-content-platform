@@ -141,7 +141,7 @@ export const YouTubeStyleVideoPlayer: React.FC<YouTubeStyleVideoPlayerProps> = (
     if (typeof document === 'undefined') return null;
 
         return ReactDOM.createPortal(
-            <div className="fixed inset-0 bg-black z-50 overflow-hidden youtube-style-player-portal">
+            <div className="fixed inset-0 bg-black z-50 overflow-y-auto youtube-style-player-portal">
             <div className="flex h-full">
                 <div className="flex-1 flex flex-col">
                     <button onClick={onClose} className={`absolute top-4 right-4 z-10 p-2 bg-black/50 hover:bg-black/70 rounded-full transition-colors ${isFullscreen ? 'hidden' : ''}`}>
