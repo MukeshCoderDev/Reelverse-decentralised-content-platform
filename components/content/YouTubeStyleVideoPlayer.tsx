@@ -71,6 +71,7 @@ export const YouTubeStyleVideoPlayer: React.FC<YouTubeStyleVideoPlayerProps> = (
     const [isSaved, setIsSaved] = useState(videoData.isSaved);
     const [likes, setLikes] = useState(videoData.likes);
     const [subscribers, setSubscribers] = useState(videoData.subscribers || 0);
+    const [isFullscreen, setIsFullscreen] = useState(false); // New state for fullscreen
 
     useEffect(() => {
         const mockComments: Comment[] = [
@@ -143,14 +144,22 @@ export const YouTubeStyleVideoPlayer: React.FC<YouTubeStyleVideoPlayerProps> = (
             <div className="fixed inset-0 bg-black z-50 overflow-hidden youtube-style-player-portal">
             <div className="flex h-full">
                 <div className="flex-1 flex flex-col">
-                    <button onClick={onClose} className="absolute top-4 right-4 z-10 p-2 bg-black/50 hover:bg-black/70 rounded-full transition-colors">
+                    <button onClick={onClose} className={`absolute top-4 right-4 z-10 p-2 bg-black/50 hover:bg-black/70 rounded-full transition-colors ${isFullscreen ? 'hidden' : ''}`}>
                         <Icon name="x" size={24} className="text-white" />
                     </button>
 
-                    <div className="flex-1 flex items-center justify-center p-4">
-                        <div className="w-full max-w-6xl relative">
+                    <div className={`flex-1 flex items-center justify-center p-4 ${isFullscreen ? 'p-0' : ''}`}>
+                        <div className={`w-full relative ${isFullscreen ? '' : 'max-w-6xl'}`}>
                             <PlayerGuard contentId={contentId || videoData.id} isAdultContent={isAdultContent} ageRating={ageRating} requiresEntitlement={requiresEntitlement} priceUSDC={priceUSDC} priceFiat={priceFiat}>
-                                <VideoPlayer src={videoSrc} title={videoData.title} autoPlay className={`w-full aspect-video ${className || ''}`} enableWatermark contentId={contentId || videoData.id} enableMetrics />
+                                <VideoPlayer
+                                    src={videoSrc}
+                                    title={videoData.title}
+                                    autoPlay
+                                    className={`w-full aspect-video ${className || ''}`}
+                                    contentId={contentId || videoData.id}
+                                    enableMetrics
+                                    onFullscreenChange={setIsFullscreen} // Pass the callback
+                                />
                             </PlayerGuard>
                         </div>
                     </div>
@@ -185,7 +194,7 @@ export const YouTubeStyleVideoPlayer: React.FC<YouTubeStyleVideoPlayerProps> = (
                     </div>
                 </div>
 
-                <div className="w-96 bg-background border-l border-border flex flex-col">
+                <div className={`w-96 bg-background border-l border-border flex flex-col ${isFullscreen ? 'hidden' : ''}`}>
                     <div className="p-4 border-b border-border">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="font-semibold text-foreground">{comments.length} Comments</h3>
