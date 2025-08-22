@@ -1,0 +1,88 @@
+/* src/styles/globals.css */
+@import './tokens.css';
+
+body {
+  font-family: var(--rv-font-sans);
+  background: var(--rv-bg);
+  color: var(--rv-text);
+}
+
+/* Utility classes */
+.rv-card {
+  background: var(--rv-surface);
+  border: 1px solid var(--rv-border);
+  border-radius: var(--rv-radius-md);
+  box-shadow: var(--rv-shadow-2);
+}
+
+.rv-input {
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--rv-border);
+  border-radius: var(--rv-radius-sm);
+  background: var(--rv-elev);
+  color: var(--rv-text);
+  font-size: var(--rv-font-size);
+}
+.rv-input:focus {
+  outline: none;
+  border-color: var(--rv-primary);
+}
+
+.rv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 16px;
+  border: none;
+  border-radius: var(--rv-radius-lg);
+  font-size: var(--rv-font-size);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.rv-btn.rv-primary {
+  background: var(--rv-primary);
+  color: var(--rv-primary-contrast);
+}
+.rv-btn.rv-primary:hover {
+  background: var(--rv-primary-hover);
+}
+.rv-btn.rv-primary:active {
+  background: var(--rv-primary-active);
+}
+.rv-btn.rv-secondary {
+  background: var(--rv-elev);
+  color: var(--rv-text);
+}
+.rv-btn.rv-secondary:hover {
+  background: var(--rv-border);
+}
+.rv-btn.rv-ghost {
+  background: transparent;
+  color: var(--rv-text);
+}
+.rv-btn.rv-ghost:hover {
+  background: rgba(255,255,255,0.1);
+}
+.rv-btn.rv-danger {
+  background: var(--rv-danger);
+  color: var(--rv-primary-contrast);
+}
+.rv-btn.rv-danger:hover {
+  background: #e03e35; /* Darker red for hover */
+}
+
+/* Focus-visible outlines */
+:focus-visible {
+  outline: 2px solid var(--rv-primary);
+  outline-offset: 2px;
+}
+
+/* Prefers-reduced-motion guards */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}

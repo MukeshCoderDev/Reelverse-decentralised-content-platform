@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import { VideoPlayer } from './VideoPlayer';
 import { PlayerGuard } from './PlayerGuard';
 import Icon from '../Icon';
+import { useAuth } from '../../src/auth/AuthProvider'; // Import useAuth
 
 interface Comment {
     id: string;
@@ -59,6 +60,7 @@ export const YouTubeStyleVideoPlayer: React.FC<YouTubeStyleVideoPlayerProps> = (
     priceFiat,
     className
 }) => {
+    const { requireAuth } = useAuth(); // Get requireAuth from AuthProvider
     const [showDescription, setShowDescription] = useState(false);
     const [comments, setComments] = useState<Comment[]>([]);
     const [newComment, setNewComment] = useState('');
@@ -96,7 +98,8 @@ export const YouTubeStyleVideoPlayer: React.FC<YouTubeStyleVideoPlayerProps> = (
         return date.toLocaleDateString();
     };
 
-    const handleLike = () => {
+    // Original handlers
+    const _handleLike = () => {
         if (isLiked) {
             setIsLiked(false);
             setLikes(likes - 1);
@@ -107,9 +110,16 @@ export const YouTubeStyleVideoPlayer: React.FC<YouTubeStyleVideoPlayerProps> = (
         }
     };
 
-    const handleSubscribe = () => {
+    const _handleSubscribe = () => {
         setIsSubscribed(!isSubscribed);
         setSubscribers(isSubscribed ? Math.max(0, subscribers - 1) : subscribers + 1);
+    };
+
+    const _handleAddComment = () => {
+        if (!newComment.trim()) return;
+        const comment: Comment = { id: Date.now().toString(), author: 'You', avatar: '/placeholder.svg', content: newComment, timestamp: new Date(), likes: 0, replies: [], isLiked: false };
+        setComments([comment, ...comments]);
+        setNewComment('');
     };
 
     const handleShare = () => {
@@ -122,12 +132,10 @@ export const YouTubeStyleVideoPlayer: React.FC<YouTubeStyleVideoPlayerProps> = (
         }
     };
 
-    const handleAddComment = () => {
-        if (!newComment.trim()) return;
-        const comment: Comment = { id: Date.now().toString(), author: 'You', avatar: '/placeholder.svg', content: newComment, timestamp: new Date(), likes: 0, replies: [], isLiked: false };
-        setComments([comment, ...comments]);
-        setNewComment('');
-    };
+    // Wrapped handlers using requireAuth
+    const handleLike = requireAuth(_handleLike);
+    const handleSubscribe = requireAuth(_handleSubscribe);
+    const handleAddComment = requireAuth(_handleAddComment);
 
     if (typeof document === 'undefined') return null;
 

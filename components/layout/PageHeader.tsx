@@ -4,9 +4,13 @@ import { benchmarks } from '../../lib/benchmarks';
 import Icon from '../Icon';
 import { WalletButton } from '../wallet/WalletButton';
 import { flags } from "../../src/config/flags";
+import { useAuth } from '../../src/auth/AuthProvider'; // Import useAuth
+import { SignInButton } from '../../src/components/auth/SignInButton'; // Import SignInButton
+import { ProfileMenu } from '../../src/components/auth/ProfileMenu'; // Import ProfileMenu
 
 export function PageHeader({ id, title, actions }: { id: keyof typeof benchmarks; title: string; actions?: React.ReactNode }) {
     const [tooltipVisible, setTooltipVisible] = useState(false);
+    const { isAuthenticated } = useAuth(); // Use auth context
 
     return (
         <div className="mb-6 flex items-center justify-between">
@@ -29,6 +33,7 @@ export function PageHeader({ id, title, actions }: { id: keyof typeof benchmarks
             <div className="flex items-center gap-2">
                 {flags.showWalletUI && <div className="wallet-ui"><WalletButton /></div>}
                 {!flags.showWalletUI && <div style={{width: 0, height: 0}} aria-hidden />}
+                {isAuthenticated ? <ProfileMenu /> : <SignInButton />} {/* Conditional rendering */}
                 {actions}
             </div>
         </div>

@@ -1,0 +1,33 @@
+/* src/styles/tokens.css */
+:root {
+  /* Typography */
+  --rv-font-sans: 'Roboto', ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial, sans-serif;
+  --rv-font-size: 14px;
+  --rv-font-size-sm: 13px;
+  --rv-font-size-lg: 16px;
+
+  /* Radii */
+  --rv-radius-sm: 8px;
+  --rv-radius-md: 12px;
+  --rv-radius-lg: 18px;
+
+  /* Colors (dark) */
+  --rv-bg: #0f0f0f;
+  --rv-surface: #121212;
+  --rv-elev: #1b1b1b;
+  --rv-border: #2a2a2a;
+  --rv-text: #f1f1f1;
+  --rv-muted: #a1a1a1;
+  --rv-primary: #3ea6ff;
+  --rv-primary-contrast: #0b0b0b;
+  --rv-danger: #ff4e45;
+  --rv-subscribe: #ff0033;
+
+  /* Hover/active ramps */
+  --rv-primary-hover: #61b7ff;
+  --rv-primary-active: #1f96ff;
+
+  /* Shadows */
+  --rv-shadow-1: 0 4px 16px rgba(0,0,0,.35);
+  --rv-shadow-2: 0 8px 24px rgba(0,0,0,.45);
+}

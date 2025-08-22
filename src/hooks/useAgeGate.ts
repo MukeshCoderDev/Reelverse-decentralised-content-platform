@@ -30,7 +30,13 @@ export const useAgeGate = (): AgeGateHook => {
   const [config] = useState(getAgeGateConfig());
   const [accepted, setAccepted] = useState(false);
 
-  const checkAcceptance = useCallback(() => {
+  // Function to check acceptance status based on cookie and local storage
+  const checkAcceptanceStatus = useCallback(() => {
+    if (!config.enabled) {
+      setAccepted(false);
+      return;
+    }
+
     const storedAcceptedAt = localStorage.getItem('ageGateAcceptedAt');
     const cookieAccepted = Cookies.get('age_gate') === '1';
 
@@ -45,11 +51,12 @@ export const useAgeGate = (): AgeGateHook => {
       }
     }
     setAccepted(false);
-  }, [config.rememberDays]);
+  }, [config.enabled, config.rememberDays]);
 
+  // Check acceptance status on component mount and when config changes
   useEffect(() => {
-    checkAcceptance();
-  }, [checkAcceptance]);
+    checkAcceptanceStatus();
+  }, [checkAcceptanceStatus]);
 
   const accept = useCallback(() => {
     const now = Date.now();

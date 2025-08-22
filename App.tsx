@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import './src/styles/globals.css'; // Import global styles
 import { flags } from './src/config/flags';
 import { HashRouter, Routes, Route, useLocation } from 'react-router-dom'; // Import useLocation
 import { MobileLayout } from './components/mobile/MobileLayout';
@@ -9,6 +10,8 @@ import { FeatureFlagProvider } from './lib/hooks/useFeatureFlags';
 import { useAgeGate } from './src/hooks/useAgeGate'; // Import useAgeGate
 import AgeGateModal from './src/components/compliance/AgeGateModal'; // Import AgeGateModal
 import BlurUntilAdult from './src/components/compliance/BlurUntilAdult'; // Import BlurUntilAdult
+import { AuthProvider } from './src/auth/AuthProvider'; // Import AuthProvider
+import { SignInModal } from './src/components/auth/SignInModal'; // Import SignInModal
 
 // Page Imports
 import HomePage from './pages/HomePage';
@@ -214,9 +217,12 @@ const App: React.FC = () => {
       <WalletProvider>
         <FeatureFlagProvider>
           <OrganizationProvider>
-            <HashRouter>
-              <AppContent />
-            </HashRouter>
+            <AuthProvider> {/* Wrap with AuthProvider */}
+              <HashRouter>
+                <AppContent />
+                <SignInModal /> {/* Render SignInModal */}
+              </HashRouter>
+            </AuthProvider>
           </OrganizationProvider>
         </FeatureFlagProvider>
       </WalletProvider>
