@@ -1,6 +1,6 @@
 
 export type IconName = 
-  | 'plus' | 'home' | 'users' | 'flame' | 'search' | 'badge-dollar' | 'users-round'
+  | 'plus' | 'plus-circle' | 'upload' | 'home' | 'users' | 'flame' | 'search' | 'badge-dollar' | 'users-round'
   | 'bell' | 'mail' | 'user' | 'clock' | 'star' | 'timer' | 'folder' | 'diamond'
   | 'file-dashed' | 'gauge' | 'film' | 'coins' | 'ticket' | 'git-merge' | 'chart'
   | 'shield-check' | 'wallet' | 'banknote' | 'credit-card' | 'settings' | 'plug'
@@ -11,7 +11,7 @@ export type IconName =
   | 'trending-down' | 'list' | 'grid' | 'check' | 'trash' | 'more-horizontal' | 'x'
   | 'download' | 'pause' | 'volume-x' | 'volume-1' | 'volume-2' | 'minimize' | 'maximize'
   | 'menu' | 'pin' | 'copy' | 'external-link' | 'refresh-cw' | 'loader' | 'alert-circle'
-  | 'check-circle' | 'wifi' | 'wifi-off' | 'link' | 'unlink' | 'globe';
+  | 'check-circle' | 'wifi' | 'wifi-off' | 'link' | 'unlink' | 'globe' | 'shield-alert';
 
 export interface SidebarItem {
   id: string;

@@ -16,6 +16,7 @@ import { SignInModal } from './src/components/auth/SignInModal'; // Import SignI
 // Page Imports
 import HomePage from './pages/HomePage';
 import CreatePage from './pages/CreatePage';
+import UploadPage from './pages/UploadPage';
 import FollowingPage from './pages/FollowingPage';
 import TrendingPage from './pages/TrendingPage';
 import ExplorePage from './pages/ExplorePage';
@@ -91,6 +92,7 @@ return (
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/create" element={<CreatePage />} />
+              <Route path="/upload" element={<UploadPage />} />
               <Route path="/following" element={<FollowingPage />} />
               <Route path="/trending" element={<TrendingPage />} />
               <Route path="/explore" element={<ExplorePage />} />
@@ -148,6 +150,7 @@ return (
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/create" element={<CreatePage />} />
+            <Route path="/upload" element={<UploadPage />} />
             <Route path="/following" element={<FollowingPage />} />
             <Route path="/trending" element={<TrendingPage />} />
             <Route path="/explore" element={<ExplorePage />} />

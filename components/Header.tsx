@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import Button from './Button';
 import Icon from './Icon';
 import { WalletButton } from './wallet/WalletButton';
@@ -10,6 +11,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ title }) => {
+  const navigate = useNavigate();
   const { isConnected, isAuthenticated, account } = useWallet();
   const [ageVerified, setAgeVerified] = React.useState(false);
   const [talentVerified, setTalentVerified] = React.useState(false);
@@ -58,6 +60,12 @@ const Header: React.FC<HeaderProps> = ({ title }) => {
     <header className="flex-shrink-0 h-16 bg-background/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-6">
       <h1 className="text-xl font-semibold">{title}</h1>
       <div className="flex items-center space-x-4">
+        {/* Upload Button */}
+        <Button variant="default" onClick={() => navigate('/upload')} className="flex items-center space-x-2">
+          <Icon name="plus-circle" size={16} />
+          <span>+ Upload</span>
+        </Button>
+        
         {/* Verification Badges */}
         {isConnected && account && (
           <div className="flex items-center space-x-2">

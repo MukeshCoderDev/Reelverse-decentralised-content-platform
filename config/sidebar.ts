@@ -2,8 +2,8 @@
 import { SidebarGroup } from '../types';
 
 export const sidebar: readonly SidebarGroup[] = [
-  { id: "create", intent: "primary", items: [
-    { id: "create", label: "Create", icon: "plus", route: "/create" }
+  { id: "upload", intent: "primary", items: [
+    { id: "upload", label: "+ Upload", icon: "plus-circle", route: "/upload" }
   ] },
 
   { group: "Primary", items: [
