@@ -32,7 +32,7 @@ export default function VideoCard(props: VideoCardProps) {
         from: location.pathname + location.search, 
         scrollY: window.scrollY 
       } as WatchPageState}
-      className={`group block relative rounded-xl overflow-hidden bg-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-transform hover:scale-[1.02] ${props.className ?? ''}`}
+      className={`group block relative rounded-card overflow-hidden bg-surface focus:outline-none focus:ring-2 focus:ring-violet-500 transition-transform hover:scale-[1.02] ${props.className ?? ''}`}
       aria-label={`Watch ${props.title}`}
     >
       {/* Thumbnail Image */}
@@ -79,12 +79,12 @@ export default function VideoCard(props: VideoCardProps) {
       {/* Content area with title and metadata */}
       <div className="p-3 space-y-1">
         {/* Title */}
-        <h3 className="text-white font-medium text-sm line-clamp-2 leading-tight">
+        <h3 className="text-text font-medium text-video-title line-clamp-2 leading-[1.35]">
           {props.title}
         </h3>
         
         {/* Author and view count */}
-        <div className="flex items-center justify-between text-xs text-slate-400">
+        <div className="flex items-center justify-between text-video-meta text-text-2">
           {props.authorName && (
             <span className="truncate">{props.authorName}</span>
           )}
@@ -153,7 +153,7 @@ export function VideoCardCompact(props: VideoCardProps) {
         from: location.pathname + location.search, 
         scrollY: window.scrollY 
       } as WatchPageState}
-      className={`group flex gap-3 p-2 rounded-lg hover:bg-slate-800/50 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors ${props.className ?? ''}`}
+      className={`group flex gap-3 p-2 rounded-lg hover:bg-hover focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors ${props.className ?? ''}`}
       aria-label={`Watch ${props.title}`}
     >
       {/* Compact thumbnail */}
@@ -175,18 +175,18 @@ export function VideoCardCompact(props: VideoCardProps) {
       
       {/* Compact content */}
       <div className="flex-1 min-w-0">
-        <h4 className="text-white font-medium text-sm line-clamp-2 leading-tight">
+        <h4 className="text-text font-medium text-sm line-clamp-2 leading-tight">
           {props.title}
         </h4>
         
         {props.authorName && (
-          <p className="text-slate-400 text-xs mt-1 truncate">
+          <p className="text-text-2 text-xs mt-1 truncate">
             {props.authorName}
           </p>
         )}
         
         {props.views != null && (
-          <p className="text-slate-500 text-xs mt-1">
+          <p className="text-text-3 text-xs mt-1">
             {formatViews(props.views)} views
           </p>
         )}

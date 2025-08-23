@@ -198,20 +198,20 @@ export default function WatchPage() {
   
   if (error) {
     return (
-      <div className="mx-auto max-w-[1400px] px-4 md:px-6 py-8">
+      <div className="mx-auto max-w-container px-4 md:px-6 py-8">
         <button 
           onClick={handleBack}
-          className="text-slate-400 hover:text-slate-200 text-sm mb-4 transition-colors"
+          className="text-text-2 hover:text-text text-sm mb-4 transition-colors"
         >
           ← Back
         </button>
         
         <div className="text-center py-12">
-          <h1 className="text-2xl font-bold text-red-400 mb-4">Video Not Found</h1>
-          <p className="text-slate-400 mb-6">{error}</p>
+          <h1 className="text-title font-bold text-live mb-4">Video Not Found</h1>
+          <p className="text-text-2 mb-6">{error}</p>
           <button
             onClick={() => navigate('/')}
-            className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-2 rounded-lg transition-colors"
+            className="bg-brand hover:bg-purple-700 text-white px-6 py-2 rounded-full transition-colors"
           >
             Go Home
           </button>
@@ -221,14 +221,14 @@ export default function WatchPage() {
   }
   
   return (
-    <div className="mx-auto max-w-[1400px] px-4 md:px-6 py-4">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="mx-auto max-w-container px-4 md:px-6 py-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] gap-6">
         {/* Main video area */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="space-y-4">
           {/* Back button */}
           <button 
             onClick={handleBack}
-            className="text-slate-400 hover:text-slate-200 text-sm transition-colors flex items-center gap-1"
+            className="text-text-2 hover:text-text text-sm transition-colors flex items-center gap-1"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -237,11 +237,11 @@ export default function WatchPage() {
           </button>
           
           {/* Video player */}
-          <div className="relative aspect-video bg-black rounded-xl overflow-hidden">
+          <div className="relative aspect-video bg-black rounded-card overflow-hidden">
             {loading ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-slate-900">
-                <div className="text-white text-center">
-                  <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+              <div className="absolute inset-0 flex items-center justify-center bg-surface">
+                <div className="text-text text-center">
+                  <div className="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
                   <p>Loading video...</p>
                 </div>
               </div>
@@ -260,11 +260,11 @@ export default function WatchPage() {
           
           {/* Video metadata */}
           <div className="space-y-4">
-            <h1 className="text-xl lg:text-2xl font-bold text-slate-100">
+            <h1 className="text-title font-bold text-text">
               {metadata?.title ?? 'Loading...'}
             </h1>
             
-            <div className="flex flex-wrap items-center gap-4 text-sm text-slate-400">
+            <div className="flex flex-wrap items-center gap-4 text-video-meta text-text-2">
               {metadata?.counts?.views != null && (
                 <span>{formatViews(metadata.counts.views)}</span>
               )}
@@ -297,8 +297,8 @@ export default function WatchPage() {
             )}
             
             {metadata?.description && (
-              <div className="bg-slate-800/50 rounded-lg p-4">
-                <p className="text-slate-300 text-sm whitespace-pre-wrap">
+              <div className="bg-surface rounded-card border border-border p-4">
+                <p className="text-text text-sm whitespace-pre-wrap">
                   {metadata.description}
                 </p>
               </div>
@@ -306,29 +306,44 @@ export default function WatchPage() {
           </div>
         </div>
         
-        {/* Sidebar */}
+        {/* Sidebar with Up Next */}
         <aside className="space-y-4">
-          <div className="bg-slate-800/50 rounded-lg p-4">
-            <h2 className="text-lg font-semibold text-slate-100 mb-3">Up Next</h2>
-            <p className="text-slate-400 text-sm">
-              Related videos will be shown here
-            </p>
+          <div className="bg-surface rounded-card border border-border p-4">
+            <h2 className="text-heading font-semibold text-text mb-3">Up Next</h2>
+            <div className="space-y-3">
+              {/* Mock up next videos - in a real app, these would be fetched */}
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex gap-3 group cursor-pointer">
+                  <div className="relative w-32 h-18 flex-shrink-0 rounded overflow-hidden bg-border">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+                    <span className="absolute bottom-1 right-1 text-[10px] bg-black/70 text-white px-1 rounded">5:{10 + i}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-medium text-text line-clamp-2 group-hover:text-brand transition-colors">
+                      Video Title {i} - Related to current video
+                    </h3>
+                    <p className="text-xs text-text-2 mt-1">Channel Name</p>
+                    <p className="text-xs text-text-3 mt-1">10K views • 2 days ago</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
           
           {/* Additional metadata panel */}
           {metadata && (
-            <div className="bg-slate-800/50 rounded-lg p-4">
-              <h3 className="text-md font-semibold text-slate-100 mb-3">Video Info</h3>
+            <div className="bg-surface rounded-card border border-border p-4">
+              <h3 className="text-heading font-semibold text-text mb-3">Video Info</h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Video ID:</span>
-                  <span className="text-slate-300 font-mono text-xs">{metadata.id}</span>
+                  <span className="text-text-2">Video ID:</span>
+                  <span className="text-text font-mono text-xs">{metadata.id}</span>
                 </div>
                 
                 {metadata.duration && (
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Duration:</span>
-                    <span className="text-slate-300">
+                    <span className="text-text-2">Duration:</span>
+                    <span className="text-text">
                       {Math.floor(metadata.duration / 60)}:{String(metadata.duration % 60).padStart(2, '0')}
                     </span>
                   </div>

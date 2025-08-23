@@ -1,0 +1,373 @@
+/* YouTube-style Light Theme Design Tokens */
+
+/* Light theme (default) */
+:root {
+  /* Background colors */
+  --bg: #f9f9f9;              /* page background */
+  --surface: #ffffff;          /* cards, bars, panels */
+  
+  /* Text colors */
+  --text: #0f0f0f;            /* primary text */
+  --text-2: #606060;          /* secondary text */
+  --text-3: #909090;          /* muted text */
+  
+  /* Border and interactive colors */
+  --border: #e5e5e5;          /* dividers */
+  --hover: #f2f2f2;           /* hover surfaces */
+  --chip: #f2f2f2;            /* filter chips background */
+  
+  /* Brand and accent colors */
+  --live: #ff0033;            /* LIVE/red seek */
+  --brand: #7c3aed;           /* Upload CTA (use sparingly) */
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.08);
+  --shadow-md: 0 2px 12px rgba(0,0,0,.06);
+  
+  /* Focus */
+  --focus-ring: #3b82f6;
+}
+
+/* Optional dark mode, toggled via data-theme="dark" on <html> */
+:root[data-theme="dark"] {
+  /* Background colors */
+  --bg: #0f0f0f;
+  --surface: #181818;
+  
+  /* Text colors */
+  --text: #f1f1f1;
+  --text-2: #aaaaaa;
+  --text-3: #8a8a8a;
+  
+  /* Border and interactive colors */
+  --border: #303030;
+  --hover: #232323;
+  --chip: #232323;
+  
+  /* Brand and accent colors */
+  --live: #ff4d4d;
+  --brand: #8b5cf6;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
+  --shadow-md: 0 2px 12px rgba(0,0,0,.3);
+  
+  /* Focus */
+  --focus-ring: #3b82f6;
+}
+
+/* Global base styles */
+html, body, #root { 
+  background: var(--bg); 
+  color: var(--text);
+  font-family: 'Roboto', ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial, sans-serif;
+}
+
+/* Enhanced focus indicators with better visibility */
+*:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* High contrast focus for better accessibility */
+@media (prefers-contrast: high) {
+  *:focus-visible {
+    outline: 3px solid #000000;
+    outline-offset: 3px;
+  }
+}
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Hide scrollbars while maintaining functionality */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Touch target size compliance */
+button, a {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Typography hierarchy optimized for readability */
+.text-display {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.text-title {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.text-heading {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.text-body {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.text-caption {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+/* Video card specific typography */
+.video-title {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.video-meta {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+/* Enhanced button states with proper focus */
+.btn-primary {
+  background: var(--brand);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 18px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.btn-primary:hover {
+  background: #6d28d9;
+}
+
+.btn-primary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.btn-secondary {
+  background: var(--chip);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 8px 16px;
+  border-radius: 18px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  min-height: 44px;
+}
+
+.btn-secondary:hover {
+  background: var(--hover);
+}
+
+.btn-secondary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Card hover effects */
+.card-hover {
+  transition: box-shadow 0.2s ease;
+}
+
+.card-hover:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* Video player customization with cross-browser support */
+video::-webkit-media-controls-timeline {
+  accent-color: var(--live);
+}
+
+video::-webkit-media-controls-current-time-display {
+  accent-color: var(--live);
+}
+
+/* Custom progress bar for Safari/Firefox compatibility */
+.video-progress-container {
+  position: relative;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.video-progress {
+  background: var(--live);
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.1s ease;
+}
+
+.video-progress-handle {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  background: var(--live);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.video-progress-container:hover .video-progress-handle {
+  opacity: 1;
+}
+
+/* Live indicator */
+.live-indicator {
+  background: var(--live);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.live-indicator::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  border-radius: 50%;
+  animation: live-pulse 2s infinite;
+}
+
+@keyframes live-pulse {
+  0%, 50% { opacity: 1; }
+  25%, 75% { opacity: 0.5; }
+}
+
+/* Skip links for keyboard navigation */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 4px;
+  text-decoration: none;
+  z-index: 100;
+  font-weight: 500;
+  border: 2px solid var(--border);
+}
+
+.skip-link:focus {
+  top: 6px;
+}
+
+/* Keyboard shortcuts styling */
+.kbd {
+  background: var(--chip);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 12px;
+  font-family: monospace;
+  color: var(--text-2);
+}
+
+/* Respect user preferences */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .card-hover:hover {
+    transform: none;
+  }
+  
+  .live-indicator::before {
+    animation: none;
+  }
+}
+
+/* Safe area support for iOS */
+@supports (padding: max(0px)) {
+  .video-container {
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+}
+
+/* RTL support */
+[dir="rtl"] .chip-scroll {
+  direction: rtl;
+}
+
+[dir="rtl"] .sidebar {
+  border-left: 1px solid var(--border);
+  border-right: none;
+}
+
+[dir="rtl"] .header-actions {
+  margin-right: auto;
+  margin-left: 0;
+}
+
+/* Enhanced responsive breakpoints with optimal grid density */
+@media (min-width: 640px) {
+  .container { max-width: 640px; }
+  .grid-video { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 768px) {
+  .container { max-width: 768px; }
+  .sidebar { width: 240px; }
+  .grid-video { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 1024px) {
+  .container { max-width: 1024px; }
+  .grid-video { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (min-width: 1280px) {
+  .container { max-width: 1280px; }
+  .grid-video { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (min-width: 1440px) {
+  .container { max-width: 1600px; }
+  .grid-video { grid-template-columns: repeat(5, 1fr); }
+}
+
+@media (min-width: 1920px) {
+  .container { max-width: 1600px; }
+  .grid-video { grid-template-columns: repeat(5, 1fr); }
+}

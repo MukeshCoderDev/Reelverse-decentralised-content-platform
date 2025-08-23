@@ -6,6 +6,28 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Reelverse</title>
+    
+    <!-- Prevent flash of incorrect theme -->
+    <script>
+      (function() {
+        var theme = localStorage.getItem('theme');
+        var root = document.documentElement;
+        
+        if (theme === 'dark') {
+          root.dataset.theme = 'dark';
+        } else if (theme === 'system') {
+          var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (prefersDark) {
+            root.dataset.theme = 'dark';
+          }
+        }
+        // Light theme is default, no action needed
+      })();
+    </script>
+    
+    <!-- Add theme CSS -->
+    <link rel="stylesheet" href="/styles/theme.css" />
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -72,7 +94,7 @@
 </script>
 <link rel="stylesheet" href="/index.css">
 </head>
-  <body class="bg-background text-foreground">
+  <body class="bg-bg text-text">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
     <script>
