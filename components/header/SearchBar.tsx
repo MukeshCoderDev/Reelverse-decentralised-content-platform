@@ -86,9 +86,10 @@ export function SearchBar() {
         <button 
           type="submit" 
           aria-label="Search" 
-          className="text-text-2 hover:text-text min-h-[44px] min-w-[44px] flex items-center justify-center rounded-r-full hover:bg-hover transition-colors"
+          className="text-[18px]"
+          style={{ color: 'var(--header-icon)' }}
         >
-          <Icon icon="material-symbols:search" className="text-[20px]" aria-hidden="true" />
+          <Icon icon="material-symbols:search" aria-hidden="true" />
         </button>
       </div>
       

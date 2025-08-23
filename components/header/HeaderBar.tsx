@@ -14,11 +14,15 @@ export function HeaderBar() {
   const immersive = /^\/(watch|live)\/[^\/]+$/.test(pathname)
 
   return (
-    <header className="sticky top-0 z-50 header-force" style={{ background: 'var(--header-bg)' }}>
+    <header className="sticky top-0 header-z">
       {/* Main header row */}
       <div
-        className="w-full border-b header-force"
-        style={{ borderColor: 'var(--header-border)', height: 'var(--header-h)' }}
+        className="w-full"
+        style={{
+          background: 'var(--header-bg)',
+          borderBottom: '1px solid var(--header-border)',
+          height: 'var(--header-h)',
+        }}
       >
         <div className="mx-auto max-w-[1600px] h-full flex items-center gap-4 px-4">
           {/* Logo/Brand */}
@@ -42,7 +46,7 @@ export function HeaderBar() {
       </div>
       
       {/* Chip row for category navigation - hidden on immersive routes */}
-      {!immersive && <ChipRow />}
+      {!immersive && <div className="chips-z"><ChipRow /></div>}
     </header>
   )
 }

@@ -37,11 +37,13 @@ export function HeaderActions() {
       {/* Upload Button - primary CTA with YouTube-style design */}
       <Link 
         to="/upload" 
-        className="inline-flex items-center space-x-2 bg-brand hover:bg-purple-700 text-white px-4 py-2 rounded-full font-medium transition-colors min-h-[44px] focus-visible:outline-2 focus-visible:outline-blue-600"
+        className="btn-upload"
         aria-label="Upload content"
       >
-        <Icon icon="material-symbols:add" size={16} />
-        <span className="hidden sm:inline">Upload</span>
+        <span className="inline-flex items-center space-x-2">
+          <Icon icon="material-symbols:add" size={16} />
+          <span className="hidden sm:inline">Upload</span>
+        </span>
       </Link>
 
       {/* Balance Pill - show when earnings pill is enabled */}
@@ -76,13 +78,13 @@ export function HeaderActions() {
 
       {/* Authentication - Sign In or Profile */}
       {!user ? (
-        <button
-          onClick={() => openSignInModal()}
-          className="inline-flex items-center space-x-2 border border-border hover:bg-hover text-text px-4 py-2 rounded-full font-medium transition-colors min-h-[44px]"
+        <Link
+          to="/signin"
+          className="btn-cta"
+          aria-label="Sign in to Reelverse"
         >
-          <Icon icon="material-symbols:account-circle-outline" size={16} />
-          <span>Sign in</span>
-        </button>
+          Sign in
+        </Link>
       ) : (
         <button
           onClick={() => navigate('/profile')}

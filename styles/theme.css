@@ -25,6 +25,13 @@
   --header-bg: #ffffff;
   --header-border: #e5e5e5;
   
+  /* CTA tokens for buttons in header */
+  --cta-blue: #2563eb; /* blue-600 */
+  --cta-blue-hover: #1e40af; /* blue-800 */
+  --cta-text: #ffffff;
+  --header-icon: #606060; /* icon color in header (light) */
+  --header-icon-hover: #0f0f0f;
+  
   /* Shadows */
   --shadow-sm: 0 1px 2px rgba(0,0,0,.08);
   --shadow-md: 0 2px 12px rgba(0,0,0,.06);
@@ -57,6 +64,13 @@
   --header-h: 56px;
   --header-bg: #0f0f0f;
   --header-border: #303030;
+  
+  /* CTA tokens for buttons in header */
+  --cta-blue: #2563eb; /* keep same */
+  --cta-blue-hover: #1e3a8a;
+  --cta-text: #ffffff;
+  --header-icon: #aaaaaa; /* icon color in header (dark) */
+  --header-icon-hover: #f1f1f1;
   
   /* Shadows */
   --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
@@ -401,4 +415,52 @@ video::-webkit-media-controls-current-time-display {
 @media (min-width: 1920px) {
   .container { max-width: 1600px; }
   .grid-video { grid-template-columns: repeat(5, 1fr); }
+}
+
+/* Reusable CTA classes */
+.btn-cta {
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--cta-text);
+  background: var(--cta-blue);
+  box-shadow: 0 1px 2px rgba(0,0,0,.08);
+}
+
+.btn-cta:hover { 
+  background: var(--cta-blue-hover); 
+}
+
+.btn-cta:focus-visible { 
+  outline: 2px solid #3b82f6; 
+  outline-offset: 2px; 
+}
+
+/* Upload violet variant (optional) */
+.btn-upload {
+  height: 36px;
+  display: inline-flex; 
+  align-items:center;
+  border-radius: 9999px; 
+  padding: 0 16px;
+  font-size: 14px; 
+  font-weight:500;
+  color: #fff; 
+  background: var(--brand);
+}
+
+.btn-upload:hover { 
+  filter: brightness(1.1); 
+}
+
+/* Header stacking helpers */
+.header-z { 
+  z-index: 50; 
+}
+.chips-z { 
+  z-index: 40; 
 }
