@@ -5,6 +5,7 @@ import { Content } from '../../types';
 import { YouTubeStyleVideoPlayer } from './YouTubeStyleVideoPlayer';
 import Icon from '../Icon';
 import { useWallet } from '../../contexts/WalletContext';
+import { useAuth } from '../../src/auth/AuthProvider';
 import { AgeVerificationService, AgeVerificationStatus } from '../../services/ageVerificationService';
 import { AgeVerificationModal } from '../AgeVerificationModal';
 import { useReturnTo } from '../../src/hooks/useReturnTo';
@@ -27,7 +28,8 @@ export const ContentCard: React.FC<ContentCardProps> = ({
     isAdultContent = false,
     ageRating = '18+'
 }) => {
-    const { account, isConnected } = useWallet(); // Re-added useWallet hook
+    const { account, isConnected } = useWallet(); // Keep for age verification API
+    const { user, openSignInModal } = useAuth(); // For auth-based access
     const [showAgeGate, setShowAgeGate] = useState(false);
     const [ageVerificationStatus, setAgeVerificationStatus] = useState<AgeVerificationStatus | null>(null);
     const [isLoadingVerification, setIsLoadingVerification] = useState(false);
@@ -70,7 +72,7 @@ export const ContentCard: React.FC<ContentCardProps> = ({
     };
 
     const isAgeVerified = ageVerificationStatus?.status === 'verified';
-    const shouldBlurContent = isAdultContent && (!isConnected || !isAgeVerified);
+    const shouldBlurContent = isAdultContent && (!user || !isAgeVerified);
 
     const handleAgeVerificationComplete = (status: AgeVerificationStatus) => {
         setAgeVerificationStatus(status);
@@ -107,22 +109,21 @@ export const ContentCard: React.FC<ContentCardProps> = ({
                             </div>
                             <h3 className="text-lg font-semibold mb-2">{ageRating} Content</h3>
                             <p className="text-sm mb-3">
-                                {!isConnected
-                                    ? 'Connect your wallet and verify your age to view this content'
+                                {!user
+                                    ? 'Sign in and verify your age to view this content'
                                     : 'Age verification required to view this content'
                                 }
                             </p>
                             <div className="flex flex-col gap-2">
-                                {!isConnected ? (
+                                {!user ? (
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            // This would trigger wallet connection
-                                            alert('Please use the wallet button in the header to connect');
+                                            openSignInModal();
                                         }}
                                         className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm font-medium transition-colors"
                                     >
-                                        Connect Wallet
+                                        Sign In
                                     </button>
                                 ) : (
                                     <button
@@ -202,7 +203,7 @@ export const ContentCard: React.FC<ContentCardProps> = ({
                     </p>
                     
                     {/* Age verification status indicator */}
-                    {isAdultContent && isConnected && (
+                    {isAdultContent && user && (
                         <div className="flex items-center gap-1">
                             {isLoadingVerification ? (
                                 <Icon name="loader" size={12} className="animate-spin text-muted-foreground" />

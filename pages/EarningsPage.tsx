@@ -4,7 +4,7 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { EmptyState } from '../components/shared/EmptyState';
 import Button from '../components/Button';
 import Icon from '../components/Icon';
-import { useWallet } from '../contexts/WalletContext';
+import { useAuth } from '../src/auth/AuthProvider';
 
 interface EarningsData {
   totalEarnings: number;
@@ -36,7 +36,7 @@ interface PayoutMethod {
 }
 
 const EarningsPage: React.FC = () => {
-    const { isConnected, account, isAuthenticated } = useWallet();
+    const { user, openSignInModal } = useAuth();
     const [earningsData, setEarningsData] = useState<EarningsData | null>(null);
     const [payoutMethods, setPayoutMethods] = useState<PayoutMethod[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -46,16 +46,16 @@ const EarningsPage: React.FC = () => {
     const [isProcessingWithdraw, setIsProcessingWithdraw] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Load earnings data when wallet connects
+    // Load earnings data when user is authenticated
     useEffect(() => {
-        if (isConnected && account && isAuthenticated) {
+        if (user) {
             loadEarningsData();
             loadPayoutMethods();
         } else {
             setEarningsData(null);
             setPayoutMethods([]);
         }
-    }, [isConnected, account, isAuthenticated]);
+    }, [user]);
 
     const loadEarningsData = async () => {
         try {
@@ -119,7 +119,7 @@ const EarningsPage: React.FC = () => {
                     id: 'crypto_1',
                     type: 'crypto',
                     name: 'USDC Wallet',
-                    details: account || '',
+                    details: user?.uid || '',
                     isDefault: true
                 },
                 {
@@ -226,28 +226,20 @@ const EarningsPage: React.FC = () => {
         }
     };
 
-    if (!isConnected || !account) {
+    if (!user) {
         return (
             <div className="p-6">
                 <PageHeader id="earnings" title="Earnings & Payouts" />
                 <EmptyState 
-                    icon="wallet"
-                    title="Connect Your Wallet" 
-                    subtitle="Connect your wallet to view your earnings and manage payouts." 
+                    icon="credit-card"
+                    title="Sign in Required" 
+                    subtitle="Sign in to view your earnings and manage payouts. No wallet required." 
                 />
-            </div>
-        );
-    }
-
-    if (!isAuthenticated) {
-        return (
-            <div className="p-6">
-                <PageHeader id="earnings" title="Earnings & Payouts" />
-                <EmptyState 
-                    icon="shield-alert"
-                    title="Authentication Required" 
-                    subtitle="Please authenticate with your wallet to access earnings data." 
-                />
+                <div className="flex justify-center mt-4">
+                    <Button onClick={() => openSignInModal()}>
+                        Sign in to Reelverse
+                    </Button>
+                </div>
             </div>
         );
     }

@@ -44,6 +44,8 @@ import StudioVerifyPage from './pages/studio/StudioVerifyPage';
 import WalletPage from './pages/WalletPage';
 import EarningsPage from './pages/EarningsPage';
 import BuyCryptoPage from './pages/BuyCryptoPage';
+import FinancePage from './pages/FinancePage';
+import Redirect from './pages/Redirect';
 import SettingsPage from './pages/SettingsPage';
 import ConnectionsPage from './pages/ConnectionsPage';
 import HelpPage from './pages/HelpPage';
@@ -127,10 +129,11 @@ return (
                 <Route path="go-live" element={<GoLivePage />} />
               </Route>
 
-              {/* Web3 Routes */}
-              <Route path="/wallet" element={<WalletPage />} />
-              <Route path="/earnings" element={<EarningsPage />} />
-              <Route path="/buy-crypto" element={<BuyCryptoPage />} />
+              {/* Finance Routes */}
+              <Route path="/finance" element={<FinancePage />} />
+              <Route path="/wallet" element={<Redirect to="/finance" />} />
+              <Route path="/buy-crypto" element={<Redirect to="/finance" />} />
+              <Route path="/earnings" element={<Redirect to="/finance" />} />
 
               {/* System Routes */}
               <Route path="/settings" element={<SettingsPage />} />
@@ -189,10 +192,11 @@ return (
               <Route path="go-live" element={<GoLivePage />} />
             </Route>
 
-            {/* Web3 Routes */}
-            <Route path="/wallet" element={<WalletPage />} />
-            <Route path="/earnings" element={<EarningsPage />} />
-            <Route path="/buy-crypto" element={<BuyCryptoPage />} />
+            {/* Finance Routes */}
+            <Route path="/finance" element={<FinancePage />} />
+            <Route path="/wallet" element={<Redirect to="/finance" />} />
+            <Route path="/buy-crypto" element={<Redirect to="/finance" />} />
+            <Route path="/earnings" element={<Redirect to="/finance" />} />
 
             {/* System Routes */}
             <Route path="/settings" element={<SettingsPage />} />

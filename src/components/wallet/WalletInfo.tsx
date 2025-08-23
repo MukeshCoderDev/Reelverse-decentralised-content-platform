@@ -173,20 +173,11 @@ export const WalletInfo: React.FC<WalletInfoProps> = ({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => window.location.hash = '#/wallet'}
-            className="flex-1"
-          >
-            <Icon name="wallet" size={16} className="mr-2" />
-            View Wallet
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => window.location.hash = '#/buy-crypto'}
+            onClick={() => window.location.hash = '#/finance'}
             className="flex-1"
           >
             <Icon name="credit-card" size={16} className="mr-2" />
-            Buy Crypto
+            View Finance
           </Button>
         </div>
       </div>

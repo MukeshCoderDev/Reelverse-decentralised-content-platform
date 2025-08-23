@@ -3,24 +3,22 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FEATURES } from '../../config/featureFlags';
 import Button from '../Button';
 import Icon from '../Icon';
-import { WalletButton } from '../wallet/WalletButton';
-import { useWallet } from '../../contexts/WalletContext';
+import { BalancePill } from '../earnings/BalancePill';
 import { useAuth } from '../../src/auth/AuthProvider';
 
 /**
  * Header Actions Component
  * Contains the right-side action buttons in the header
- * Features Upload button, optional earnings pill, and conditional wallet connect
+ * Features Upload button, optional earnings pill, and sign-in for walletless finance
  */
 export function HeaderActions() {
   const navigate = useNavigate();
-  const { isConnected } = useWallet();
   const { user, openSignInModal } = useAuth();
 
   return (
     <div className="flex items-center gap-3 ml-auto pr-4">
-      {/* Go Live Button - only show when connected and feature enabled */}
-      {FEATURES.GO_LIVE_ENABLED && isConnected && (
+      {/* Go Live Button - only show when authenticated and feature enabled */}
+      {FEATURES.GO_LIVE_ENABLED && user && (
         <Button 
           variant="outline" 
           onClick={() => navigate('/studio/go-live')} 
@@ -43,7 +41,14 @@ export function HeaderActions() {
         </span>
       </Link>
 
-      {/* Sign In Button - show when not authenticated */}
+      {/* Balance Pill - show when earnings pill is enabled */}
+      {FEATURES.EARNINGS_PILL_ENABLED && (
+        <Link to="/finance">
+          <BalancePill />
+        </Link>
+      )}
+
+      {/* Authentication - Sign In or Profile */}
       {!user ? (
         <button
           onClick={() => openSignInModal()}
@@ -52,12 +57,11 @@ export function HeaderActions() {
           Sign in to Reelverse
         </button>
       ) : (
-        /* User menu - show when authenticated */
         <Link
-          to="/profile"
+          to="/finance"
           className="rounded-md bg-slate-800 px-3 py-2 text-sm text-slate-100 hover:bg-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-950"
         >
-          Profile
+          Finance
         </Link>
       )}
     </div>

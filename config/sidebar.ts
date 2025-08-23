@@ -1,5 +1,6 @@
 
 import { SidebarGroup } from '../types';
+import { FEATURES } from './featureFlags';
 
 export const sidebar: readonly SidebarGroup[] = [
   { id: "upload", intent: "primary", items: [
@@ -39,11 +40,11 @@ export const sidebar: readonly SidebarGroup[] = [
     { id: "studio-verify", label: "Verification", icon: "shield-check", route: "/studio/verify" }
   ]},
 
-  { group: "Web3", items: [
-    { id: "wallet", label: "Wallet", icon: "wallet", route: "/wallet" },
-    { id: "earnings", label: "Earnings & Payouts", icon: "banknote", route: "/earnings" },
-    { id: "onramp", label: "Buy Crypto", icon: "credit-card", route: "/buy-crypto" }
-  ]},
+  { group: "FINANCE", items: [
+    ...(FEATURES.EARNINGS_ENABLED ? [{ id: "finance", label: "Earnings & Payouts", icon: "credit-card" as const, route: "/finance" }] : []),
+    ...(FEATURES.WALLET_ENABLED ? [{ id: "wallet", label: "Wallet", icon: "wallet" as const, route: "/wallet" }] : []),
+    ...(FEATURES.BUY_CRYPTO_ENABLED ? [{ id: "onramp", label: "Buy Crypto", icon: "credit-card" as const, route: "/buy-crypto" }] : [])
+  ].filter(Boolean)},
 
   { group: "System", items: [
     { id: "settings", label: "Settings", icon: "settings", route: "/settings" },

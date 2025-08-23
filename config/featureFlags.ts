@@ -6,6 +6,18 @@ export const FEATURES = {
   /** Hide wallet connect functionality - treasury covers gas for now */
   WALLET_CONNECT_ENABLED: false,
   
+  /** Control wallet UI visibility and functionality */
+  WALLET_ENABLED: false,
+  
+  /** Control buy crypto functionality - delete everywhere */
+  BUY_CRYPTO_ENABLED: false,
+  
+  /** Enable earnings functionality */
+  EARNINGS_ENABLED: true,
+  
+  /** Enable payouts functionality */
+  PAYOUTS_ENABLED: true,
+  
   /** Show earnings pill in header actions */
   EARNINGS_PILL_ENABLED: true,
   
