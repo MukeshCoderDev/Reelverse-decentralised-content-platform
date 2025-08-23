@@ -1,6 +1,6 @@
 
 import React, { useRef } from 'react';
-import { ContentCard } from "./ContentCard";
+import VideoCard from "../video/VideoCard";
 import { Content } from '../../types';
 import Icon from '../Icon';
 
@@ -8,6 +8,32 @@ interface ShelfRowProps {
     title: string;
     items: Content[];
     showScrollButtons?: boolean;
+}
+
+// Helper function to convert Content to VideoCard props
+function contentToVideoCardProps(content: Content) {
+    return {
+        id: content.id,
+        title: content.title,
+        posterUrl: content.thumbnail || '/placeholder.svg',
+        durationSec: Math.floor(Math.random() * 600 + 60), // Mock duration for now
+        authorName: content.creator,
+        views: parseViewCount(content.views),
+    };
+}
+
+// Parse view count string to number
+function parseViewCount(viewsStr: string): number {
+    if (!viewsStr) return 0;
+    
+    const cleaned = viewsStr.toLowerCase().replace(/[^0-9.kmb]/g, '');
+    const num = parseFloat(cleaned);
+    
+    if (cleaned.includes('k')) return Math.floor(num * 1000);
+    if (cleaned.includes('m')) return Math.floor(num * 1000000);
+    if (cleaned.includes('b')) return Math.floor(num * 1000000000);
+    
+    return Math.floor(num) || 0;
 }
 
 export function ShelfRow({ title, items, showScrollButtons = true }: ShelfRowProps) {
@@ -62,7 +88,7 @@ export function ShelfRow({ title, items, showScrollButtons = true }: ShelfRowPro
                 >
                     {items.map((item, i) => (
                         <div key={`${item.title}-${i}`} className="flex-shrink-0 w-72">
-                            <ContentCard {...item} />
+                            <VideoCard {...contentToVideoCardProps(item)} />
                         </div>
                     ))}
                 </div>

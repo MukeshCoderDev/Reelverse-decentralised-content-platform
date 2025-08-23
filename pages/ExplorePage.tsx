@@ -4,12 +4,39 @@ import { useLocation, Link } from 'react-router-dom';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Categories } from '../components/explore/Categories';
 import { ShelfRow } from '../components/content/ShelfRow';
+import VideoCard from '../components/video/VideoCard';
 import SearchEngine from '../components/search/SearchEngine';
 import { fetchExplore } from '../lib/fetchers';
 import { Content } from '../types';
 import { RowSkeleton } from '../components/shared/Skeletons';
 import Icon from '../components/Icon';
 import { useReturnTo } from '../src/hooks/useReturnTo';
+
+// Helper function to convert Content to VideoCard props
+function contentToVideoCardProps(content: Content) {
+    return {
+        id: content.id,
+        title: content.title,
+        posterUrl: content.thumbnail || '/placeholder.svg',
+        durationSec: Math.floor(Math.random() * 600 + 60), // Mock duration
+        authorName: content.creator,
+        views: parseViewCount(content.views),
+    };
+}
+
+// Parse view count string to number
+function parseViewCount(viewsStr: string): number {
+    if (!viewsStr) return 0;
+    
+    const cleaned = viewsStr.toLowerCase().replace(/[^0-9.kmb]/g, '');
+    const num = parseFloat(cleaned);
+    
+    if (cleaned.includes('k')) return Math.floor(num * 1000);
+    if (cleaned.includes('m')) return Math.floor(num * 1000000);
+    if (cleaned.includes('b')) return Math.floor(num * 1000000000);
+    
+    return Math.floor(num) || 0;
+}
 
 interface ExploreData {
     categories: { id: string; name: string }[];
@@ -165,29 +192,11 @@ const ExplorePage: React.FC = () => {
                                 </div>
                             ) : searchResults.length > 0 ? (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                    {searchResults.map((item, index) => (
-                                        <div key={index} className="group cursor-pointer">
-                                            <div className="relative mb-2 overflow-hidden rounded-lg bg-muted aspect-video">
-                                                <img 
-                                                    src={item.thumbnail || "/placeholder.svg"} 
-                                                    alt={item.title} 
-                                                    className="h-full w-full object-cover transition duration-300 group-hover:scale-105" 
-                                                />
-                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <Icon name="play" size={24} className="text-white" />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <h4 className="line-clamp-2 text-sm font-medium group-hover:text-primary transition-colors">
-                                                    {item.title}
-                                                </h4>
-                                                <p className="mt-1 text-xs text-muted-foreground">
-                                                    {item.creator} • {item.views} • {item.ago}
-                                                </p>
-                                            </div>
-                                        </div>
+                                    {searchResults.map((item) => (
+                                        <VideoCard 
+                                            key={item.id}
+                                            {...contentToVideoCardProps(item)}
+                                        />
                                     ))}
                                 </div>
                             ) : (

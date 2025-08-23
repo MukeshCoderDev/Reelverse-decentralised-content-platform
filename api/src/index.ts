@@ -25,6 +25,7 @@ import metricsRegister from './utils/metrics';
 import RelayerService from './services/onchain/relayerService';
 import RelayerWorker from './services/onchain/relayerWorker';
 import { getUploadSweeperService } from './services/uploads/uploadSweeperService';
+import { reconciliationScheduler } from './schedulers/reconciliationScheduler';
 
 // Import routes
 import authRoutes from './routes/auth';
@@ -63,6 +64,13 @@ import docsRoutes from './routes/docs'; // Import docs routes
 import legalRoutes from './routes/legal'; // Import legal routes
 import complianceRoutes from './routes/compliance'; // Import compliance routes
 import resumableUploadsRoutes from './routes/resumableUploads'; // Import resumable uploads routes
+import tipsRoutes from './routes/tips'; // Import tips routes
+import subscriptionsRoutes from './routes/subscriptions'; // Import subscriptions routes
+import financeRoutes from './routes/finance'; // Import finance routes
+import payoutsRoutes from './routes/payouts'; // Import payouts routes
+import analyticsRoutes from './routes/analytics'; // Import analytics routes
+import videoSplitsRoutes from './routes/videoSplits'; // Import video splits routes
+import referralsRoutes from './routes/referrals'; // Import referrals routes
 
 // Load environment variables
 dotenv.config();
@@ -224,6 +232,13 @@ app.use(`/api/${API_VERSION}`, docsRoutes); // Add docs routes
 app.use(`/api/${API_VERSION}/legal`, legalRoutes); // Add legal routes
 app.use(`/api/${API_VERSION}/compliance`, complianceRoutes); // Add compliance routes
 app.use(`/api/${API_VERSION}/resumable-uploads`, resumableUploadsRoutes); // YouTube/Google-style resumable uploads
+app.use(`/api/${API_VERSION}/tips`, tipsRoutes); // Tips with splits and referrals
+app.use(`/api/${API_VERSION}/subscriptions`, subscriptionsRoutes); // Subscription management
+app.use(`/api/${API_VERSION}/finance`, financeRoutes); // Finance dashboard
+app.use(`/api/${API_VERSION}/payouts`, payoutsRoutes); // Payout requests
+app.use(`/api/${API_VERSION}/analytics`, analyticsRoutes); // Analytics events and insights
+app.use(`/api/${API_VERSION}/videos`, videoSplitsRoutes); // Video splits management
+app.use(`/api/${API_VERSION}/referrals`, referralsRoutes); // Referral codes and tracking
 
 // Error handling middleware
 app.use(notFoundHandler);
@@ -234,6 +249,7 @@ process.on('SIGTERM', async () => {
   logger.info('SIGTERM received, shutting down gracefully');
   const uploadSweeper = getUploadSweeperService();
   uploadSweeper.stop();
+  reconciliationScheduler.stop();
   await aiServiceManager.shutdown();
   await infrastructure.shutdown();
   process.exit(0);
@@ -243,6 +259,7 @@ process.on('SIGINT', async () => {
   logger.info('SIGINT received, shutting down gracefully');
   const uploadSweeper = getUploadSweeperService();
   uploadSweeper.stop();
+  reconciliationScheduler.stop();
   await aiServiceManager.shutdown();
   await infrastructure.shutdown();
   process.exit(0);
@@ -284,6 +301,10 @@ async function startServer() {
     const uploadSweeper = getUploadSweeperService();
     uploadSweeper.start();
     logger.info('Upload sweeper service started');
+    
+    // Start financial reconciliation scheduler
+    reconciliationScheduler.start();
+    logger.info('Financial reconciliation scheduler started');
 
     // Emit server startup event
     await eventBus.publish({

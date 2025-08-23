@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import './src/styles/globals.css'; // Import global styles
+import './styles/tailwind.css'; // Import Tailwind CSS with existing styles
 import { flags } from './src/config/flags';
 import { HashRouter, Routes, Route, useLocation } from 'react-router-dom'; // Import useLocation
 import { MobileLayout } from './components/mobile/MobileLayout';
@@ -58,7 +58,8 @@ import TreasuryPage from './pages/dao/TreasuryPage';
 import RewardsPage from './pages/RewardsPage';
 import AgencyDashboardPage from './pages/AgencyDashboardPage'; // Assuming this path
 import NotFoundPage from './pages/NotFoundPage'; // Assuming this path
-import WatchPage from './pages/WatchPage'; // Import WatchPage
+import VideoNavigationTestPage from './pages/VideoNavigationTestPage';
+import WatchPage from './pages/WatchPage';
 const AppContent: React.FC = () => {
   const { accepted, accept, config, shouldGate } = useAgeGate();
   const location = useLocation();
@@ -105,7 +106,7 @@ return (
               <Route path="/communities" element={<CommunitiesPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/inbox" element={<InboxPage />} />
-              <Route path="/watch/:contentId" element={<WatchPage />} /> {/* New Watch Page Route */}
+              <Route path="/watch/:id" element={<WatchPage />} />
 
               {/* Library Routes */}
               <Route path="/u/me" element={<ProfilePage />} />
@@ -167,7 +168,7 @@ return (
             <Route path="/communities" element={<CommunitiesPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/inbox" element={<InboxPage />} />
-            <Route path="/watch/:contentId" element={<WatchPage />} /> {/* New Watch Page Route */}
+            <Route path="/watch/:id" element={<WatchPage />} /> {/* Standardized to :id parameter */}
 
             {/* Library Routes */}
             <Route path="/u/me" element={<ProfilePage />} />

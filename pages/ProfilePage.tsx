@@ -2,7 +2,34 @@
 import React, { useState, useEffect } from 'react';
 import Icon from '../components/Icon';
 import Button from '../components/Button';
+import VideoCard from '../components/video/VideoCard';
 import { Content } from '../types';
+
+// Helper function to convert Content to VideoCard props
+function contentToVideoCardProps(content: Content) {
+    return {
+        id: content.id,
+        title: content.title,
+        posterUrl: content.thumbnail || '/placeholder.svg',
+        durationSec: Math.floor(Math.random() * 600 + 60), // Mock duration
+        authorName: content.creator,
+        views: parseViewCount(content.views),
+    };
+}
+
+// Parse view count string to number
+function parseViewCount(viewsStr: string): number {
+    if (!viewsStr) return 0;
+    
+    const cleaned = viewsStr.toLowerCase().replace(/[^0-9.kmb]/g, '');
+    const num = parseFloat(cleaned);
+    
+    if (cleaned.includes('k')) return Math.floor(num * 1000);
+    if (cleaned.includes('m')) return Math.floor(num * 1000000);
+    if (cleaned.includes('b')) return Math.floor(num * 1000000000);
+    
+    return Math.floor(num) || 0;
+}
 
 interface ChannelStats {
     subscribers: string;
@@ -286,29 +313,11 @@ const ProfilePage: React.FC = () => {
                             <div>
                                 <h3 className="text-lg font-semibold mb-4">Recent videos</h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                    {mockContent.slice(0, 8).map((video, index) => (
-                                        <div key={index} className="group cursor-pointer">
-                                            <div className="relative mb-3 overflow-hidden rounded-lg bg-muted aspect-video">
-                                                <img 
-                                                    src={video.thumbnail} 
-                                                    alt={video.title} 
-                                                    className="h-full w-full object-cover transition duration-300 group-hover:scale-105" 
-                                                />
-                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <Icon name="play" size={20} className="text-white" />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <h4 className="line-clamp-2 text-sm font-medium group-hover:text-primary transition-colors mb-1">
-                                                    {video.title}
-                                                </h4>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {video.views} • {video.ago}
-                                                </p>
-                                            </div>
-                                        </div>
+                                    {mockContent.slice(0, 8).map((video) => (
+                                        <VideoCard 
+                                            key={video.id}
+                                            {...contentToVideoCardProps(video)}
+                                        />
                                     ))}
                                 </div>
                             </div>
@@ -317,29 +326,11 @@ const ProfilePage: React.FC = () => {
 
                     {activeTab === 'videos' && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                            {mockContent.map((video, index) => (
-                                <div key={index} className="group cursor-pointer">
-                                    <div className="relative mb-3 overflow-hidden rounded-lg bg-muted aspect-video">
-                                        <img 
-                                            src={video.thumbnail} 
-                                            alt={video.title} 
-                                            className="h-full w-full object-cover transition duration-300 group-hover:scale-105" 
-                                        />
-                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                                            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <Icon name="play" size={20} className="text-white" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <h4 className="line-clamp-2 text-sm font-medium group-hover:text-primary transition-colors mb-1">
-                                            {video.title}
-                                        </h4>
-                                        <p className="text-xs text-muted-foreground">
-                                            {video.views} • {video.ago}
-                                        </p>
-                                    </div>
-                                </div>
+                            {mockContent.map((video) => (
+                                <VideoCard 
+                                    key={video.id}
+                                    {...contentToVideoCardProps(video)}
+                                />
                             ))}
                         </div>
                     )}
