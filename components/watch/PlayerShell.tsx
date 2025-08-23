@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useEnhancedHlsPlayer } from '../../hooks/useHlsPlayer';
 import { usePlayerShortcuts } from '../../hooks/usePlayerShortcuts';
-import { track } from '../../utils/analytics';
+import { analytics } from '../../utils/analytics';
 import { watchPath } from '../../utils/routes';
 
 interface PlayerShellProps {
@@ -35,11 +35,11 @@ export default function PlayerShell({ id, meta, startAt = 0, getNextVideo }: Pla
       const m = pct >= 0.75 ? 75 : pct >= 0.5 ? 50 : pct >= 0.25 ? 25 : 0;
       if (m > progressMilestone) {
         setMilestone(m);
-        track('watch_progress', { video_id: id, milestone: m });
+        analytics.trackWatchProgress({ videoId: id, milestone: m } as any);
       }
     },
     onEnded: () => {
-      track('watch_complete', { video_id: id });
+      analytics.trackWatchComplete({ videoId: id } as any);
       
       // Handle autoplay next
       const autoplay = JSON.parse(localStorage.getItem('rv.autoplay') || 'true');
@@ -77,7 +77,7 @@ export default function PlayerShell({ id, meta, startAt = 0, getNextVideo }: Pla
     const video = ref.current;
     if (!video) return;
     
-    const onPlay = () => track('watch_start', { video_id: id });
+    const onPlay = () => analytics.trackWatchStart({ videoId: id } as any);
     video.addEventListener('play', onPlay);
     
     return () => {
