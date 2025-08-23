@@ -25,10 +25,7 @@ const Sidebar: React.FC = () => {
 
   return (
     <aside className="w-64 flex-shrink-0 bg-surface border-r border-border p-3 flex flex-col space-y-2 overflow-y-auto h-full">
-      {/* Brand/Logo section */}
-      <div className="px-2 pb-4 mb-2 border-b border-border">
-        <h1 className="text-2xl font-bold text-text">Reelverse</h1>
-      </div>
+      {/* Brand/Logo section - removed duplicate Reelverse heading */}
       
       {/* Main navigation */}
       <nav className="flex-1" role="navigation" aria-label="Main navigation">

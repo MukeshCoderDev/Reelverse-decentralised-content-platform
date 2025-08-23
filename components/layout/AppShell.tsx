@@ -25,13 +25,13 @@ export function AppShell({ children }: AppShellProps) {
       <div className="flex">
         {/* Sidebar - hidden on immersive routes and mobile */}
         {!immersive && (
-          <aside className="hidden md:block w-64 shrink-0">
+          <aside className="hidden md:block w-64 shrink-0 border-r border-border bg-surface">
             <Sidebar />
           </aside>
         )}
         
         {/* Main content area */}
-        <main className={`flex-1 min-h-screen ${immersive ? 'px-0' : ''}`}>
+        <main className={`flex-1 ${immersive ? 'px-0' : ''}`}>
           {children}
         </main>
       </div>

@@ -19,11 +19,12 @@ export function SearchBar() {
         inputRef.current?.focus()
       }
       
-      // Clear and blur with Escape
+      // Clear with Escape when input is focused
       if (e.key === 'Escape' && document.activeElement === inputRef.current) {
+        e.preventDefault()
         setQuery('')
         setIsAutocompleteOpen(false)
-        inputRef.current?.blur()
+        inputRef.current!.value = ''
       }
     }
     
@@ -53,7 +54,14 @@ export function SearchBar() {
       className="relative"
       onSubmit={handleSubmit}
     >
-      <div className="flex items-center gap-0 rounded-full bg-surface border border-border shadow-sm hover:border-text-3 focus-within:border-brand transition-colors">
+      <div 
+        className="flex items-center gap-0 rounded-full border px-4" 
+        style={{ 
+          height: '40px', 
+          background: 'var(--surface)', 
+          borderColor: 'var(--border)' 
+        }}
+      >
         {/* Search input */}
         <label htmlFor="site-search" className="sr-only">
           Search videos, creators, and playlists
@@ -64,20 +72,21 @@ export function SearchBar() {
           type="search"
           value={query}
           onChange={handleInputChange}
-          className="w-full bg-transparent outline-none text-[14px] placeholder:text-text-3 text-text px-4 py-2 rounded-l-full" 
+          className="w-full bg-transparent outline-none text-[14px] placeholder:text-text-3 text-text" 
           placeholder="Search"
           aria-label="Search videos and creators"
           aria-describedby="search-help"
           aria-expanded={isAutocompleteOpen}
           aria-haspopup="listbox"
           aria-autocomplete="list"
+          aria-keyshortcuts="/"
         />
         
         {/* Search button */}
         <button 
           type="submit" 
           aria-label="Search" 
-          className="text-text-2 hover:text-text min-h-[44px] min-w-[44px] flex items-center justify-center rounded-r-full hover:bg-hover transition-colors border-l border-border"
+          className="text-text-2 hover:text-text min-h-[44px] min-w-[44px] flex items-center justify-center rounded-r-full hover:bg-hover transition-colors"
         >
           <Icon icon="material-symbols:search" className="text-[20px]" aria-hidden="true" />
         </button>

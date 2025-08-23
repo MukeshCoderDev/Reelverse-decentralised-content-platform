@@ -20,6 +20,11 @@
   --live: #ff0033;            /* LIVE/red seek */
   --brand: #7c3aed;           /* Upload CTA (use sparingly) */
   
+  /* Header variables */
+  --header-h: 56px;
+  --header-bg: #ffffff;
+  --header-border: #e5e5e5;
+  
   /* Shadows */
   --shadow-sm: 0 1px 2px rgba(0,0,0,.08);
   --shadow-md: 0 2px 12px rgba(0,0,0,.06);
@@ -48,12 +53,38 @@
   --live: #ff4d4d;
   --brand: #8b5cf6;
   
+  /* Header variables */
+  --header-h: 56px;
+  --header-bg: #0f0f0f;
+  --header-border: #303030;
+  
   /* Shadows */
   --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
   --shadow-md: 0 2px 12px rgba(0,0,0,.3);
   
   /* Focus */
   --focus-ring: #3b82f6;
+}
+
+/* Add safe-area padding to body for iOS notch */
+body {
+  padding-top: env(safe-area-inset-top, 0);
+}
+
+/* In dark mode use a soft shadow; in light keep border */
+.header-shadow-light {
+  box-shadow: none;
+}
+
+.header-shadow-dark {
+  box-shadow: 0 1px 2px rgba(0,0,0,.3);
+}
+
+/* Header override utility for guaranteed white header in light mode */
+.header-force {
+  background: var(--header-bg) !important;
+  border-bottom: 1px solid var(--header-border) !important;
+  box-shadow: none !important;
 }
 
 /* Global base styles */

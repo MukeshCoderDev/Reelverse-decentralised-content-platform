@@ -27,7 +27,7 @@ export function HeaderActions() {
         <Button 
           variant="outline" 
           onClick={() => navigate('/studio/go-live')} 
-          className="hidden md:inline-flex items-center space-x-2 bg-gradient-to-r from-violet-600 to-red-600 hover:from-violet-700 hover:to-red-700 text-white border-0 rounded-full px-4 py-2"
+          className="hidden md:inline-flex items-center space-x-2 bg-brand hover:bg-purple-700 text-white border-0 rounded-full px-4 py-2"
         >
           <Icon icon="material-symbols:video-camera-front-outline" size={16} />
           <span>Go Live</span>

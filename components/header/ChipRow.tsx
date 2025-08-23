@@ -55,8 +55,15 @@ export function ChipRow() {
   }
 
   return (
-    <div className="sticky top-14 z-40 border-t border-border bg-surface">
-      <div className="relative mx-auto max-w-container px-4 py-2">
+    <div 
+      className="sticky z-40" 
+      style={{ 
+        top: 'var(--header-h)', 
+        background: 'var(--header-bg)', 
+        borderBottom: `1px solid var(--header-border)` 
+      }}
+    >
+      <div className="relative mx-auto max-w-[1600px] px-4 py-2">
         {/* Left scroll button */}
         <button 
           onClick={scrollLeft}

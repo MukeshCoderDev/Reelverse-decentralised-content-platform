@@ -65,7 +65,7 @@ export function CenterNav({ className = '', mobile = false, align = 'left' }: Ce
     return (
       <nav className={`md:hidden ${className}`} aria-label="Main navigation">
         <div className="flex items-center justify-center">
-          <div className="inline-flex items-center rounded-full bg-slate-900/80 backdrop-blur-sm border border-slate-800 p-1">
+          <div className="inline-flex items-center rounded-full border p-1" style={{ borderColor: 'var(--header-border)', background: 'var(--header-bg)' }}>
             <ul className="flex items-center gap-1" role="tablist">
               {navigationItems.map((item) => (
                 <li key={item.to} role="presentation">
@@ -80,8 +80,8 @@ export function CenterNav({ className = '', mobile = false, align = 'left' }: Ce
                           isActive
                             ? item.live
                               ? 'bg-red-600/20 text-red-400 shadow-lg shadow-red-500/20'
-                              : 'bg-slate-800 text-white shadow-lg'
-                            : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
+                              : 'bg-hover text-text shadow-lg'
+                            : 'text-text-2 hover:text-text hover:bg-hover'
                         }
                       `
                     }
@@ -109,10 +109,11 @@ export function CenterNav({ className = '', mobile = false, align = 'left' }: Ce
 
   return (
     <nav 
-      className={`sticky top-0 z-40 hidden md:flex w-full bg-slate-950/80 backdrop-blur supports-[backdrop-filter]:bg-slate-950/60 ${align === 'left' ? 'justify-start' : 'justify-center'} ${className}`}
+      className={`sticky z-40 hidden md:flex w-full ${align === 'left' ? 'justify-start' : 'justify-center'} ${className}`}
       aria-label="Primary navigation"
+      style={{ top: 'var(--header-h)', background: 'transparent' }}
     >
-      <div className="my-2 ml-4 md:ml-6 rounded-full border border-slate-800 bg-slate-900/80 px-1 shadow-sm">
+      <div className="my-2 ml-4 md:ml-6 rounded-full border px-1 shadow-sm" style={{ borderColor: 'var(--header-border)', background: 'var(--header-bg)' }}>
         <ul className="flex items-center gap-1 px-1" role="tablist">
           {navigationItems.map((item) => (
             <li key={item.to} role="presentation">
@@ -127,8 +128,8 @@ export function CenterNav({ className = '', mobile = false, align = 'left' }: Ce
                       isActive
                         ? item.live
                           ? 'bg-red-600/20 text-red-400 shadow-lg shadow-red-500/20'
-                          : 'bg-slate-800 text-white shadow-lg'
-                        : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
+                          : 'bg-hover text-text shadow-lg'
+                        : 'text-text-2 hover:text-text hover:bg-hover'
                     }
                   `
                 }
@@ -157,7 +158,7 @@ export function CenterNav({ className = '', mobile = false, align = 'left' }: Ce
 
                     {/* Notification badge */}
                     {item.badge && (
-                      <span className="absolute -top-1 -right-1 h-3 w-3 bg-violet-500 rounded-full border-2 border-slate-900" />
+                      <span className="absolute -top-1 -right-1 h-3 w-3 bg-violet-500 rounded-full border-2 border-surface" />
                     )}
                   </span>
                 )}
