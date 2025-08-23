@@ -338,6 +338,39 @@ export class MonetizationAnalytics {
   }
 
   /**
+   * Track video watch start
+   */
+  trackWatchStart(properties: { videoId: string } & BaseEventProperties) {
+    this.track('watch_start', {
+      ...properties,
+      timestamp: Date.now(),
+      platform: this.detectPlatform()
+    });
+  }
+
+  /**
+   * Track video watch progress
+   */
+  trackWatchProgress(properties: { videoId: string; milestone: number } & BaseEventProperties) {
+    this.track('watch_progress', {
+      ...properties,
+      timestamp: Date.now(),
+      platform: this.detectPlatform()
+    });
+  }
+
+  /**
+   * Track video watch complete
+   */
+  trackWatchComplete(properties: { videoId: string } & BaseEventProperties) {
+    this.track('watch_complete', {
+      ...properties,
+      timestamp: Date.now(),
+      platform: this.detectPlatform()
+    });
+  }
+
+  /**
    * Generic track method
    */
   private track(eventName: string, properties: any) {
@@ -484,7 +517,10 @@ export function useAnalytics() {
     trackFinanceDashboard: analytics.trackFinanceDashboard.bind(analytics),
     trackCSVExport: analytics.trackCSVExport.bind(analytics),
     trackConversionFunnel: analytics.trackConversionFunnel.bind(analytics),
-    trackABTest: analytics.trackABTest.bind(analytics)
+    trackABTest: analytics.trackABTest.bind(analytics),
+    trackWatchStart: analytics.trackWatchStart.bind(analytics),
+    trackWatchProgress: analytics.trackWatchProgress.bind(analytics),
+    trackWatchComplete: analytics.trackWatchComplete.bind(analytics)
   };
 }
 

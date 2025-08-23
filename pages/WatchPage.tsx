@@ -1,8 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { useHlsPlayer } from '../hooks/useHlsPlayer';
-import { WatchPageState } from '../components/video/VideoCard';
-import ActionRail from '../components/video/ActionRail';
+import PlayerShell from '../components/watch/PlayerShell';
+import TitleRow from '../components/watch/TitleRow';
+import ActionsBar from '../components/watch/ActionsBar';
+import DescriptionBox from '../components/watch/DescriptionBox';
+import UpNextRail from '../components/watch/UpNextRail';
+import Comments from '../components/watch/Comments';
+import SkeletonVideo from '../components/watch/SkeletonVideo';
+import { parseTimecode } from '../utils/time';
+import { track } from '../utils/analytics';
 
 interface VideoMetadata {
   id: string;
@@ -30,8 +36,7 @@ interface ApiResponse {
 }
 
 /**
- * WatchPage component for video playback with HLS support
- * Handles navigation state and provides fallback streaming
+ * YouTube-style WatchPage component for video playback
  */
 export default function WatchPage() {
   const { id = '' } = useParams<{ id: string }>();
@@ -39,21 +44,21 @@ export default function WatchPage() {
   const navigate = useNavigate();
   
   // Cast location state with proper typing
-  const locationState = location.state as WatchPageState | null;
+  const locationState = location.state as { from?: string; scrollY?: number } | null;
   
   // Component state
   const [metadata, setMetadata] = useState<VideoMetadata | null>(null);
-  const [videoSrc, setVideoSrc] = useState<string>('');
+  const [upNextItems, setUpNextItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [upNextLoading, setUpNextLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showResume, setShowResume] = useState<{ at: number } | null>(null);
   
-  // Video element ref for HLS player
-  const videoRef = useRef<HTMLVideoElement>(null);
+  // Handle timecode deep linking
+  const tMatch = new URLSearchParams(location.search).get('t') || '';
+  const startSeconds = parseTimecode(tMatch);
   
-  // Initialize HLS player
-  useHlsPlayer(videoRef, videoSrc);
-  
-  // Fetch video metadata and determine source
+  // Fetch video metadata
   useEffect(() => {
     let isMounted = true;
     
@@ -87,14 +92,11 @@ export default function WatchPage() {
             const meta = apiResponse.data;
             setMetadata(meta);
             
-            // Prefer HLS URL, fallback to src, then test stream
-            const source = meta.hlsUrl || 
-                          meta.src || 
-                          'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
-            setVideoSrc(source);
+            // Update document title and meta tags
+            document.title = `${meta.title} - Reelverse`;
+            updateMetaTags(meta);
           } else {
             console.warn('API returned unsuccessful response:', apiResponse);
-            setVideoSrc('https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8');
             setMetadata({
               id,
               title: 'Test Video',
@@ -104,7 +106,6 @@ export default function WatchPage() {
         } else {
           console.warn('Failed to fetch video metadata:', response.status);
           // Use fallback stream when API fails
-          setVideoSrc('https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8');
           setMetadata({
             id,
             title: 'Video',
@@ -116,7 +117,6 @@ export default function WatchPage() {
         
         if (isMounted) {
           // Fallback to test stream on any error
-          setVideoSrc('https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8');
           setMetadata({
             id,
             title: 'Video',
@@ -138,30 +138,77 @@ export default function WatchPage() {
     };
   }, [id]);
   
-  // Handle timecode deep linking
+  // Fetch up next videos
   useEffect(() => {
-    if (!videoRef.current || !videoSrc) return;
+    let isMounted = true;
     
-    const urlParams = new URLSearchParams(location.search);
-    const startTime = parseInt(urlParams.get('t') || '0');
-    
-    if (startTime > 0) {
-      const video = videoRef.current;
+    const fetchUpNext = async () => {
+      if (!id) return;
       
-      const seekToTime = () => {
-        video.currentTime = startTime;
-        video.removeEventListener('loadeddata', seekToTime);
-      };
-      
-      if (video.readyState >= 2) {
-        // Video is already loaded
-        video.currentTime = startTime;
-      } else {
-        // Wait for video to load
-        video.addEventListener('loadeddata', seekToTime);
+      try {
+        setUpNextLoading(true);
+        
+        // In a real app, this would fetch from an API
+        // For now, we'll use mock data
+        const mockUpNext = [
+          {
+            id: 'next1',
+            title: 'Next Video 1',
+            channel: { name: 'Channel 1' },
+            views: 15000,
+            durationSec: 320,
+            posterUrl: '',
+            publishedAt: '2 days ago'
+          },
+          {
+            id: 'next2',
+            title: 'Next Video 2',
+            channel: { name: 'Channel 2' },
+            views: 42000,
+            durationSec: 180,
+            posterUrl: '',
+            publishedAt: '1 week ago'
+          },
+          {
+            id: 'next3',
+            title: 'Next Video 3',
+            channel: { name: 'Channel 3' },
+            views: 8900,
+            durationSec: 450,
+            posterUrl: '',
+            publishedAt: '3 days ago'
+          }
+        ];
+        
+        if (isMounted) {
+          setUpNextItems(mockUpNext);
+          setUpNextLoading(false);
+        }
+      } catch (err) {
+        console.error('Error fetching up next videos:', err);
+        if (isMounted) {
+          setUpNextItems([]);
+          setUpNextLoading(false);
+        }
       }
+    };
+    
+    fetchUpNext();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+  
+  // Check for saved watch progress
+  useEffect(() => {
+    if (!id || startSeconds > 0) return;
+    
+    const saved = Number(localStorage.getItem(`rv.pos.${id}`) || 0);
+    if (saved > 0) {
+      setShowResume({ at: saved });
     }
-  }, [videoSrc, location.search]);
+  }, [id, startSeconds]);
   
   // Handle back navigation with scroll restoration
   const handleBack = () => {
@@ -178,22 +225,52 @@ export default function WatchPage() {
     }
   };
   
-  // Format view count
-  const formatViews = (count?: number) => {
-    if (!count) return '0 views';
-    if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M views`;
-    if (count >= 1000) return `${(count / 1000).toFixed(1)}K views`;
-    return `${count} views`;
+  // Update meta tags for SEO
+  const updateMetaTags = (meta: VideoMetadata) => {
+    // Update og:title
+    let ogTitle = document.querySelector('meta[property="og:title"]');
+    if (!ogTitle) {
+      ogTitle = document.createElement('meta');
+      ogTitle.setAttribute('property', 'og:title');
+      document.head.appendChild(ogTitle);
+    }
+    ogTitle.setAttribute('content', meta.title);
+    
+    // Update og:description
+    let ogDescription = document.querySelector('meta[property="og:description"]');
+    if (!ogDescription) {
+      ogDescription = document.createElement('meta');
+      ogDescription.setAttribute('property', 'og:description');
+      document.head.appendChild(ogDescription);
+    }
+    ogDescription.setAttribute('content', meta.description || meta.title);
+    
+    // Update og:image
+    let ogImage = document.querySelector('meta[property="og:image"]');
+    if (!ogImage) {
+      ogImage = document.createElement('meta');
+      ogImage.setAttribute('property', 'og:image');
+      document.head.appendChild(ogImage);
+    }
+    ogImage.setAttribute('content', meta.id ? `/api/videos/${meta.id}/thumbnail` : '');
   };
   
-  // Format upload date
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '';
-    try {
-      return new Date(dateString).toLocaleDateString();
-    } catch {
-      return '';
+  // Get next video for autoplay
+  const getNextVideo = () => {
+    return upNextItems.length > 0 ? upNextItems[0] : null;
+  };
+  
+  // Handle resume confirmation
+  const handleResume = () => {
+    if (showResume) {
+      // The PlayerShell will handle the actual resume
+      setShowResume(null);
     }
+  };
+  
+  // Handle skip resume
+  const handleSkipResume = () => {
+    setShowResume(null);
   };
   
   if (error) {
@@ -221,138 +298,67 @@ export default function WatchPage() {
   }
   
   return (
-    <div className="mx-auto max-w-container px-4 md:px-6 py-4">
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] gap-6">
-        {/* Main video area */}
-        <div className="space-y-4">
-          {/* Back button */}
-          <button 
-            onClick={handleBack}
-            className="text-text-2 hover:text-text text-sm transition-colors flex items-center gap-1"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back
-          </button>
-          
-          {/* Video player */}
-          <div className="relative aspect-video bg-black rounded-card overflow-hidden">
-            {loading ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-surface">
-                <div className="text-text text-center">
-                  <div className="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                  <p>Loading video...</p>
-                </div>
-              </div>
-            ) : (
-              <video 
-                ref={videoRef}
-                controls
-                playsInline
-                muted
-                autoPlay
-                className="h-full w-full object-contain bg-black"
-                poster={metadata?.id ? `/api/videos/${metadata.id}/thumbnail` : undefined}
-              />
-            )}
-          </div>
-          
-          {/* Video metadata */}
-          <div className="space-y-4">
-            <h1 className="text-title font-bold text-text">
-              {metadata?.title ?? 'Loading...'}
-            </h1>
-            
-            <div className="flex flex-wrap items-center gap-4 text-video-meta text-text-2">
-              {metadata?.counts?.views != null && (
-                <span>{formatViews(metadata.counts.views)}</span>
-              )}
-              
-              {metadata?.createdAt && (
-                <span>{formatDate(metadata.createdAt)}</span>
-              )}
-              
-              {metadata?.author && (
-                <span>by {metadata.author.name}</span>
-              )}
+    <div className="mx-auto max-w-[1600px] px-4 py-4 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] gap-6">
+      {/* Main video area */}
+      <div className="space-y-4">
+        {/* Resume prompt */}
+        {showResume && (
+          <div className="bg-surface border border-border rounded-card p-4 flex items-center justify-between">
+            <div>
+              <p className="font-medium">Resume watching?</p>
+              <p className="text-sm text-text-2">Continue from {Math.floor(showResume.at / 60)}:{String(showResume.at % 60).padStart(2, '0')}</p>
             </div>
-
-            {/* Action Rail - Monetization Controls */}
-            {metadata && metadata.author && (
-              <ActionRail
-                videoId={metadata.id}
-                creatorId={metadata.author.id}
-                creatorName={metadata.author.name}
-                videoTitle={metadata.title}
-                onTipSuccess={(amount) => {
-                  // Track tip success
-                  console.log(`Tip of $${amount} sent successfully`);
-                }}
-                onSubscriptionChange={(subscribed) => {
-                  // Track subscription change
-                  console.log(`Subscription ${subscribed ? 'activated' : 'deactivated'}`);
-                }}
-              />
-            )}
-            
-            {metadata?.description && (
-              <div className="bg-surface rounded-card border border-border p-4">
-                <p className="text-text text-sm whitespace-pre-wrap">
-                  {metadata.description}
-                </p>
-              </div>
-            )}
+            <div className="flex gap-2">
+              <button
+                onClick={handleSkipResume}
+                className="px-3 py-1.5 text-sm border border-border rounded-full hover:bg-hover"
+              >
+                Skip
+              </button>
+              <button
+                onClick={handleResume}
+                className="px-3 py-1.5 text-sm bg-brand text-white rounded-full hover:bg-brand/90"
+              >
+                Resume
+              </button>
+            </div>
           </div>
-        </div>
+        )}
         
-        {/* Sidebar with Up Next */}
-        <aside className="space-y-4">
-          <div className="bg-surface rounded-card border border-border p-4">
-            <h2 className="text-heading font-semibold text-text mb-3">Up Next</h2>
-            <div className="space-y-3">
-              {/* Mock up next videos - in a real app, these would be fetched */}
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex gap-3 group cursor-pointer">
-                  <div className="relative w-32 h-18 flex-shrink-0 rounded overflow-hidden bg-border">
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
-                    <span className="absolute bottom-1 right-1 text-[10px] bg-black/70 text-white px-1 rounded">5:{10 + i}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-medium text-text line-clamp-2 group-hover:text-brand transition-colors">
-                      Video Title {i} - Related to current video
-                    </h3>
-                    <p className="text-xs text-text-2 mt-1">Channel Name</p>
-                    <p className="text-xs text-text-3 mt-1">10K views • 2 days ago</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          {/* Additional metadata panel */}
-          {metadata && (
-            <div className="bg-surface rounded-card border border-border p-4">
-              <h3 className="text-heading font-semibold text-text mb-3">Video Info</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-text-2">Video ID:</span>
-                  <span className="text-text font-mono text-xs">{metadata.id}</span>
-                </div>
-                
-                {metadata.duration && (
-                  <div className="flex justify-between">
-                    <span className="text-text-2">Duration:</span>
-                    <span className="text-text">
-                      {Math.floor(metadata.duration / 60)}:{String(metadata.duration % 60).padStart(2, '0')}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </aside>
+        {/* Video player */}
+        {loading ? (
+          <SkeletonVideo />
+        ) : (
+          metadata && (
+            <PlayerShell 
+              id={id} 
+              meta={metadata} 
+              startAt={startSeconds || (showResume?.at || 0)}
+              getNextVideo={getNextVideo}
+            />
+          )
+        )}
+        
+        {/* Video metadata */}
+        {metadata && (
+          <>
+            <TitleRow meta={metadata} />
+            <ActionsBar videoId={id} meta={metadata} />
+            <DescriptionBox meta={metadata} />
+            <Comments videoId={id} />
+          </>
+        )}
       </div>
+      
+      {/* Sidebar with Up Next */}
+      <aside>
+        <UpNextRail 
+          currentId={id} 
+          channelId={metadata?.author?.id} 
+          items={upNextItems}
+          loading={upNextLoading}
+        />
+      </aside>
     </div>
   );
 }
