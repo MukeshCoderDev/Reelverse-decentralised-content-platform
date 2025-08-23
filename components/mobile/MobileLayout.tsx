@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MobileBottomNav } from './MobileBottomNav';
-import { MobileHeader } from './MobileHeader';
+import Header from '../Header';
 import Sidebar from '../Sidebar';
 
 interface MobileLayoutProps {
@@ -59,13 +59,16 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
     }, [isMobile, showSidebar]);
 
     if (!isMobile) {
-        // Desktop layout - existing sidebar layout
+        // Desktop layout with Header and Sidebar
         return (
             <div className="flex h-screen bg-background text-foreground">
                 <Sidebar />
-                <main className="flex-1 overflow-y-auto">
-                    {children}
-                </main>
+                <div className="flex-1 flex flex-col">
+                    <Header title="Reelverse" />
+                    <main className="flex-1 overflow-y-auto">
+                        {children}
+                    </main>
+                </div>
             </div>
         );
     }
@@ -73,8 +76,8 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
     // Mobile layout with bottom navigation
     return (
         <div className="flex flex-col h-screen bg-background text-foreground">
-            {/* Mobile Header */}
-            <MobileHeader onMenuClick={() => setShowSidebar(true)} />
+            {/* Header with navigation */}
+            <Header title="Reelverse" onMenuClick={() => setShowSidebar(true)} />
             
             {/* Main Content */}
             <main className="flex-1 overflow-y-auto pb-20">

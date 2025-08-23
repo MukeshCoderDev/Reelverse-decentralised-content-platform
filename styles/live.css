@@ -1,0 +1,226 @@
+/**
+ * Live Streaming UI Styles
+ * Custom CSS for live streaming components
+ */
+
+/* Live badge animations */
+.live-badge {
+  @apply inline-flex items-center gap-1 px-2 py-1 rounded-md;
+  @apply bg-red-600/90 text-white text-[11px] font-bold uppercase;
+}
+
+.live-dot {
+  @apply relative flex h-2.5 w-2.5;
+}
+
+.live-dot::before {
+  @apply animate-ping absolute inline-flex h-full w-full;
+  @apply rounded-full bg-white opacity-60;
+  content: '';
+}
+
+.live-dot::after {
+  @apply relative inline-flex rounded-full h-2.5 w-2.5 bg-white;
+  content: '';
+}
+
+/* Live card overlay gradients */
+.live-card-overlay {
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.7) 0%,
+    rgba(0, 0, 0, 0.1) 50%,
+    transparent 100%
+  );
+}
+
+/* Live scrim for text readability */
+.live-scrim {
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.8) 0%,
+    rgba(0, 0, 0, 0.3) 50%,
+    transparent 100%
+  );
+}
+
+/* Snap viewport for vertical live feeds (if implementing TikTok-style) */
+.snap-viewport {
+  scroll-snap-type: y mandatory;
+  overflow-y: scroll;
+}
+
+.snap-viewport > * {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+/* Custom scrollbar styles for chat */
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-track-slate-800 {
+  scrollbar-color: rgba(71, 85, 105, 1) transparent;
+}
+
+.scrollbar-thumb-slate-600 {
+  scrollbar-color: rgba(71, 85, 105, 1) rgba(30, 41, 59, 1);
+}
+
+/* Hide scrollbar for horizontal scrolling grids */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Live player controls fade animation */
+.live-player-controls {
+  transition: opacity 0.3s ease-in-out;
+}
+
+.live-player:hover .live-player-controls {
+  opacity: 1;
+}
+
+/* Chat message animations */
+@keyframes slideInFromBottom {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.chat-message-enter {
+  animation: slideInFromBottom 0.2s ease-out;
+}
+
+/* Tip modal animations */
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.tip-modal-enter {
+  animation: scaleIn 0.2s ease-out;
+}
+
+/* Live badge pulse animation variants */
+@keyframes pulse-red {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.live-badge-pulse {
+  animation: pulse-red 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Gradient text for "LIVE" indicators */
+.live-text-gradient {
+  background: linear-gradient(45deg, #ef4444, #dc2626);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Center navigation glass morphism */
+.center-nav-glass {
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(71, 85, 105, 0.3);
+}
+
+/* Loading shimmer animation */
+@keyframes shimmer {
+  0% {
+    background-position: -468px 0;
+  }
+  100% {
+    background-position: 468px 0;
+  }
+}
+
+.loading-shimmer {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Dark theme loading shimmer */
+.loading-shimmer-dark {
+  background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Live status indicators */
+.status-live {
+  @apply bg-red-500 text-white;
+}
+
+.status-upcoming {
+  @apply bg-orange-500 text-white;
+}
+
+.status-ended {
+  @apply bg-slate-500 text-slate-200;
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  .live-dot::before,
+  .live-badge-pulse,
+  .loading-shimmer,
+  .loading-shimmer-dark {
+    animation: none;
+  }
+  
+  .chat-message-enter,
+  .tip-modal-enter {
+    animation: none;
+  }
+}
+
+/* Focus ring improvements for live components */
+.live-focus:focus {
+  @apply outline-none ring-2 ring-violet-500 ring-offset-2 ring-offset-slate-950;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .live-badge {
+    border: 2px solid currentColor;
+  }
+  
+  .live-card-overlay {
+    background: rgba(0, 0, 0, 0.9);
+  }
+}
+
+/* Print styles (hide live elements) */
+@media print {
+  .live-badge,
+  .live-player-controls,
+  .chat-message,
+  .tip-modal {
+    display: none !important;
+  }
+}

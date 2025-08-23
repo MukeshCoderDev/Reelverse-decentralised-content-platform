@@ -21,6 +21,7 @@ import FollowingPage from './pages/FollowingPage';
 import TrendingPage from './pages/TrendingPage';
 import ExplorePage from './pages/ExplorePage';
 import SubscriptionsPage from './pages/SubscriptionsPage';
+import ShortsFeedPage from './pages/ShortsFeedPage';
 import CommunitiesPage from './pages/CommunitiesPage';
 import NotificationsPage from './pages/NotificationsPage';
 import InboxPage from './pages/InboxPage';
@@ -47,7 +48,9 @@ import SettingsPage from './pages/SettingsPage';
 import ConnectionsPage from './pages/ConnectionsPage';
 import HelpPage from './pages/HelpPage';
 import StatusPage from './pages/StatusPage';
-import LivePage from './pages/LivePage';
+import LiveFeedPage from './pages/LiveFeedPage';
+import LiveWatchPage from './pages/LiveWatchPage';
+import GoLivePage from './pages/studio/GoLivePage';
 import DaoPage from './pages/dao/DaoPage';
 import TreasuryPage from './pages/dao/TreasuryPage';
 import RewardsPage from './pages/RewardsPage';
@@ -121,6 +124,7 @@ return (
                 <Route path="analytics" element={<StudioAnalyticsPage />} />
                 <Route path="moderation" element={<StudioModerationPage />} />
                 <Route path="verify" element={<StudioVerifyPage />} />
+                <Route path="go-live" element={<GoLivePage />} />
               </Route>
 
               {/* Web3 Routes */}
@@ -134,8 +138,10 @@ return (
               <Route path="/help" element={<HelpPage />} />
               <Route path="/status" element={<StatusPage />} />
 
-              {/* Phase 2 Routes */}
-              <Route path="/live" element={<LivePage />} />
+              {/* Live Streaming Routes */}
+              <Route path="/live" element={<LiveFeedPage />} />
+              <Route path="/live/:id" element={<LiveWatchPage />} />
+              <Route path="/shorts" element={<ShortsFeedPage />} />
               <Route path="/dao" element={<DaoPage />} />
               <Route path="/dao/treasury" element={<TreasuryPage />} />
               <Route path="/rewards" element={<RewardsPage />} />
@@ -179,6 +185,8 @@ return (
               <Route path="analytics" element={<StudioAnalyticsPage />} />
               <Route path="moderation" element={<StudioModerationPage />} />
               <Route path="verify" element={<StudioVerifyPage />} />
+              <Route path="go-live" element={<GoLivePage />} />
+              <Route path="go-live" element={<GoLivePage />} />
             </Route>
 
             {/* Web3 Routes */}
@@ -192,8 +200,10 @@ return (
             <Route path="/help" element={<HelpPage />} />
             <Route path="/status" element={<StatusPage />} />
 
-            {/* Phase 2 Routes */}
-            <Route path="/live" element={<LivePage />} />
+            {/* Live Streaming Routes */}
+            <Route path="/live" element={<LiveFeedPage />} />
+            <Route path="/live/:id" element={<LiveWatchPage />} />
+            <Route path="/shorts" element={<ShortsFeedPage />} />
             <Route path="/dao" element={<DaoPage />} />
             <Route path="/dao/treasury" element={<TreasuryPage />} />
             <Route path="/rewards" element={<RewardsPage />} />

@@ -1,7 +1,6 @@
 
 import React, { Suspense, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { PageHeader } from '../components/layout/PageHeader';
 import { ShelfRow } from '../components/content/ShelfRow';
 import { fetchHome } from '../lib/fetchers';
 import { RowSkeleton } from '../components/shared/Skeletons';
@@ -67,16 +66,9 @@ const HomePage: React.FC = () => {
   }, [location.pathname, saveScroll, restoreScroll]);
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* YouTube-style clean header */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border">
-        <div className="p-6">
-          <PageHeader id="home" title="Home" />
-        </div>
-      </div>
-      
-      {/* Content area with YouTube-style spacing */}
-      <div className="px-6 py-4">
+    <div className="min-h-screen bg-slate-950">
+      {/* Content area starts immediately below sticky CenterNav */}
+      <div className="py-6">
         {isLoading ? (
           <RowSkeleton />
         ) : items ? (

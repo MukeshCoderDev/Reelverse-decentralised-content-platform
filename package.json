@@ -15,6 +15,7 @@
     "@uppy/tus": "^5.0.0",
     "@walletconnect/web3-provider": "^1.8.0",
     "ethers": "^6.15.0",
+    "hls.js": "^1.5.13",
     "js-cookie": "^3.0.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
