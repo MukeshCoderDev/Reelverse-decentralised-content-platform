@@ -1,5 +1,5 @@
 import Hls from 'hls.js';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 /**
  * Hook for managing HLS video playback with fallback support
@@ -104,7 +104,13 @@ export function useHlsPlayerWithControls(
     };
     
     if (Hls.isSupported()) {
-      hls = new Hls({ lowLatencyMode: false });
+      hls = new Hls({ 
+        lowLatencyMode: false,
+        maxBufferLength: 30,
+        startLevel: -1,           // auto ABR
+        capLevelToPlayerSize: true,
+        enableWorker: true
+      });
       
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         if (options?.autoplay) {
@@ -148,6 +154,119 @@ export function useHlsPlayerWithControls(
     
     return () => {
       video.removeEventListener('loadeddata', handleLoadedData);
+      if (hls) {
+        hls.destroy();
+      }
+    };
+  }, [ref, src, options]);
+}
+
+/**
+ * Enhanced hook with all the advanced features needed for YouTube-style player
+ * @param ref - React ref to video element
+ * @param src - HLS stream URL
+ * @param options - Configuration options
+ */
+export function useEnhancedHlsPlayer(
+  ref: React.RefObject<HTMLVideoElement>,
+  src: string,
+  options?: {
+    videoId?: string;
+    startTime?: number;
+    onProgress?: (time: number, duration: number) => void;
+    onEnded?: () => void;
+    onError?: (error: any) => void;
+  }
+) {
+  const lastSaveTimeRef = useRef(0);
+  const has75PercentPlayedRef = useRef(false);
+
+  useEffect(() => {
+    const video = ref.current;
+    if (!video || !src) return;
+    
+    let hls: Hls | null = null;
+    let progressThrottle: number | null = null;
+    
+    // Initialize HLS player
+    if (Hls.isSupported()) {
+      hls = new Hls({
+        maxBufferLength: 30,
+        startLevel: -1,
+        capLevelToPlayerSize: true,
+        enableWorker: true
+      });
+      
+      hls.loadSource(src);
+      hls.attachMedia(video);
+      
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        options?.onError?.(data);
+      });
+    } else {
+      video.src = src;
+    }
+    
+    // Set start time if provided
+    const setStartTime = () => {
+      if (options?.startTime && options.startTime > 0) {
+        video.currentTime = options.startTime;
+      }
+    };
+    
+    if (video.readyState >= 2) {
+      setStartTime();
+    } else {
+      video.addEventListener('loadeddata', setStartTime, { once: true });
+    }
+    
+    // Time update handler with throttling
+    const onTimeUpdate = () => {
+      const now = performance.now();
+      if (now - lastSaveTimeRef.current < 1000) return;
+      
+      lastSaveTimeRef.current = now;
+      options?.onProgress?.(video.currentTime, video.duration);
+      
+      // Save watch progress (≥ 20s and ≥ 10% watched)
+      if (video.currentTime > 20 && video.duration && video.currentTime / video.duration > 0.1) {
+        localStorage.setItem(`rv.pos.${options?.videoId}`, String(Math.floor(video.currentTime)));
+      }
+      
+      // Preload next video at 75% progress
+      if (!has75PercentPlayedRef.current && video.duration && video.currentTime / video.duration >= 0.75) {
+        has75PercentPlayedRef.current = true;
+        // This would trigger a preload in the parent component
+      }
+    };
+    
+    // Progress throttling
+    const handleProgress = () => {
+      if (progressThrottle) {
+        cancelAnimationFrame(progressThrottle);
+      }
+      progressThrottle = requestAnimationFrame(onTimeUpdate);
+    };
+    
+    video.addEventListener('timeupdate', handleProgress);
+    
+    // Ended handler
+    const onEnded = () => {
+      options?.onEnded?.();
+    };
+    
+    video.addEventListener('ended', onEnded);
+    
+    // Cleanup
+    return () => {
+      video.removeEventListener('loadeddata', setStartTime);
+      video.removeEventListener('timeupdate', handleProgress);
+      video.removeEventListener('ended', onEnded);
+      
+      if (progressThrottle) {
+        cancelAnimationFrame(progressThrottle);
+      }
+      
       if (hls) {
         hls.destroy();
       }
