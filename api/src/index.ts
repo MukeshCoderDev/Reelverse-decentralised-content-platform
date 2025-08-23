@@ -24,6 +24,7 @@ import { auditSink } from './core/auditSink';
 import metricsRegister from './utils/metrics';
 import RelayerService from './services/onchain/relayerService';
 import RelayerWorker from './services/onchain/relayerWorker';
+import { getUploadSweeperService } from './services/uploads/uploadSweeperService';
 
 // Import routes
 import authRoutes from './routes/auth';
@@ -61,6 +62,7 @@ import billingRoutes from './routes/billing'; // Import new billing routes
 import docsRoutes from './routes/docs'; // Import docs routes
 import legalRoutes from './routes/legal'; // Import legal routes
 import complianceRoutes from './routes/compliance'; // Import compliance routes
+import resumableUploadsRoutes from './routes/resumableUploads'; // Import resumable uploads routes
 
 // Load environment variables
 dotenv.config();
@@ -92,11 +94,25 @@ app.use(cors({
   origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   credentials: process.env.CORS_CREDENTIALS === 'true',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With',
+    'Content-Range',
+    'Idempotency-Key'
+  ],
+  exposedHeaders: [
+    'Location',
+    'Range', 
+    'X-Upload-Content-Length',
+    'X-Upload-Content-Type',
+    'Upload-Offset',
+    'Cache-Control'
+  ]
 }));
 // Allow idempotency and correlation headers from clients
 app.use((req: Request, res: Response, next: NextFunction) => {
-  res.setHeader('Access-Control-Expose-Headers', 'X-Request-ID, X-Idempotency-Replay');
+  res.setHeader('Access-Control-Expose-Headers', 'X-Request-ID, X-Idempotency-Replay, Location, Range, Upload-Offset, Cache-Control');
   next();
 });
 
@@ -207,6 +223,7 @@ if (env.AUTH_PROVIDER === 'privy') {
 app.use(`/api/${API_VERSION}`, docsRoutes); // Add docs routes
 app.use(`/api/${API_VERSION}/legal`, legalRoutes); // Add legal routes
 app.use(`/api/${API_VERSION}/compliance`, complianceRoutes); // Add compliance routes
+app.use(`/api/${API_VERSION}/resumable-uploads`, resumableUploadsRoutes); // YouTube/Google-style resumable uploads
 
 // Error handling middleware
 app.use(notFoundHandler);
@@ -215,6 +232,8 @@ app.use(unifiedErrorHandler);
 // Graceful shutdown handling
 process.on('SIGTERM', async () => {
   logger.info('SIGTERM received, shutting down gracefully');
+  const uploadSweeper = getUploadSweeperService();
+  uploadSweeper.stop();
   await aiServiceManager.shutdown();
   await infrastructure.shutdown();
   process.exit(0);
@@ -222,6 +241,8 @@ process.on('SIGTERM', async () => {
 
 process.on('SIGINT', async () => {
   logger.info('SIGINT received, shutting down gracefully');
+  const uploadSweeper = getUploadSweeperService();
+  uploadSweeper.stop();
   await aiServiceManager.shutdown();
   await infrastructure.shutdown();
   process.exit(0);
@@ -258,6 +279,11 @@ async function startServer() {
     // Initialize AI services
     await aiServiceManager.initialize();
     logger.info('AI services initialized successfully');
+
+    // Start upload sweeper service
+    const uploadSweeper = getUploadSweeperService();
+    uploadSweeper.start();
+    logger.info('Upload sweeper service started');
 
     // Emit server startup event
     await eventBus.publish({
