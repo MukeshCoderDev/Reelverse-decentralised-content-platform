@@ -26,6 +26,8 @@ export interface CenterNavProps {
   className?: string;
   /** Whether to show mobile variant */
   mobile?: boolean;
+  /** Navigation alignment - left or center */
+  align?: 'left' | 'center';
 }
 
 /**
@@ -56,7 +58,7 @@ const navigationItems: NavItem[] = [
  * Provides segmented navigation with special handling for Live section
  * Features sticky positioning and dynamic live count indicators
  */
-export function CenterNav({ className = '', mobile = false }: CenterNavProps) {
+export function CenterNav({ className = '', mobile = false, align = 'left' }: CenterNavProps) {
   const liveCount = useLivePresenceCount();
   
   if (mobile) {
@@ -107,10 +109,10 @@ export function CenterNav({ className = '', mobile = false }: CenterNavProps) {
 
   return (
     <nav 
-      className={`sticky top-0 z-40 hidden md:flex w-full justify-center bg-slate-950/80 backdrop-blur supports-[backdrop-filter]:bg-slate-950/60 ${className}`}
+      className={`sticky top-0 z-40 hidden md:flex w-full bg-slate-950/80 backdrop-blur supports-[backdrop-filter]:bg-slate-950/60 ${align === 'left' ? 'justify-start' : 'justify-center'} ${className}`}
       aria-label="Primary navigation"
     >
-      <div className="my-2 rounded-full border border-slate-800 bg-slate-900/80 px-1 shadow-sm">
+      <div className="my-2 ml-4 md:ml-6 rounded-full border border-slate-800 bg-slate-900/80 px-1 shadow-sm">
         <ul className="flex items-center gap-1 px-1" role="tablist">
           {navigationItems.map((item) => (
             <li key={item.to} role="presentation">

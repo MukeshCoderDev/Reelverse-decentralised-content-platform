@@ -5,6 +5,7 @@ import Button from '../Button';
 import Icon from '../Icon';
 import { WalletButton } from '../wallet/WalletButton';
 import { useWallet } from '../../contexts/WalletContext';
+import { useAuth } from '../../src/auth/AuthProvider';
 
 /**
  * Header Actions Component
@@ -14,9 +15,10 @@ import { useWallet } from '../../contexts/WalletContext';
 export function HeaderActions() {
   const navigate = useNavigate();
   const { isConnected } = useWallet();
+  const { user, openSignInModal } = useAuth();
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3 ml-auto pr-4">
       {/* Go Live Button - only show when connected and feature enabled */}
       {FEATURES.GO_LIVE_ENABLED && isConnected && (
         <Button 
@@ -41,31 +43,23 @@ export function HeaderActions() {
         </span>
       </Link>
 
-      {/* Earnings Pill - show when feature enabled */}
-      {FEATURES.EARNINGS_PILL_ENABLED && <EarningsPill />}
-
-      {/* Wallet Connect - conditionally shown based on feature flag */}
-      {FEATURES.WALLET_CONNECT_ENABLED && <WalletButton />}
-      
-      {/* Notifications - always show */}
-      <button
-        onClick={() => navigate('/notifications')}
-        className="relative p-2 rounded-full hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-slate-950"
-        aria-label="Notifications"
-      >
-        <Icon name="bell" size={20} />
-        {/* Notification badge */}
-        <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full animate-pulse" />
-      </button>
-
-      {/* User menu - placeholder for future avatar/profile */}
-      <button
-        onClick={() => navigate('/u/me')}
-        className="p-2 rounded-full hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-slate-950"
-        aria-label="Profile menu"
-      >
-        <Icon name="user" size={20} />
-      </button>
+      {/* Sign In Button - show when not authenticated */}
+      {!user ? (
+        <button
+          onClick={() => openSignInModal()}
+          className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-950"
+        >
+          Sign in to Reelverse
+        </button>
+      ) : (
+        /* User menu - show when authenticated */
+        <Link
+          to="/profile"
+          className="rounded-md bg-slate-800 px-3 py-2 text-sm text-slate-100 hover:bg-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-950"
+        >
+          Profile
+        </Link>
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { CenterNav } from '../header/CenterNav';
 import { HeaderActions } from '../header/HeaderActions';
 import { Sidebar } from '../Sidebar';
@@ -15,12 +15,17 @@ interface AppShellProps {
  * Eliminates duplicate page titles and provides clean content hierarchy
  */
 export function AppShell({ children }: AppShellProps) {
+  const { pathname } = useLocation();
+  const immersive = /^\/live\/[^\/]+$/.test(pathname); // Full-width on live watch
+
   return (
     <div className="flex h-screen bg-slate-950">
-      {/* Sidebar for desktop */}
-      <div className="hidden md:block">
-        <Sidebar />
-      </div>
+      {/* Sidebar for desktop - hidden on immersive live watch */}
+      {!immersive && (
+        <div className="hidden md:block">
+          <Sidebar />
+        </div>
+      )}
       
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-h-screen bg-slate-950">
@@ -52,11 +57,11 @@ export function AppShell({ children }: AppShellProps) {
           <HeaderActions />
         </header>
         
-        {/* CenterNav - Single sticky header */}
-        <CenterNav />
+        {/* CenterNav - Single sticky header with left alignment */}
+        <CenterNav align="left" />
         
-        {/* Main content - starts immediately after CenterNav with proper spacing */}
-        <main className="flex-1 px-4 md:px-6 lg:px-8 pb-10">
+        {/* Main content - adaptive padding for immersive experience */}
+        <main className={`flex-1 pb-10 ${immersive ? 'px-0 md:px-0' : 'px-4 md:px-6 lg:px-8'}`}>
           {children}
         </main>
       </div>
